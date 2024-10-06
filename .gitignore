@@ -1,0 +1,46 @@
+# Node.js
+# Ignore node_modules in the frontend
+frontend/node_modules/
+
+# Vue.js
+# Ignore Vue.js build output directories
+frontend/dist/
+frontend/build/
+frontend/.nuxt/
+frontend/.next/
+frontend/coverage/
+frontend/.env
+
+# Ignore log files
+frontend/**/*.log
+
+# Ignore local environment variables
+frontend/.env
+
+# Ignore macOS and Windows system files
+.DS_Store
+Thumbs.db
+
+# Ignore all environment variable files in the root and backend
+.env
+backend/.env
+
+# Flask
+# Ignore Python bytecode and other cache files
+backend/__pycache__/
+backend/*.pyc
+backend/*.pyo
+backend/instance/
+backend/myenv/
+backend/.env
+
+# Ignore Flask build directories
+backend/build/
+backend/dist/
+backend/coverage/
+backend/.pytest_cache/
+
+# Ignore other typical Flask files
+backend/.flaskenv
+backend/.mypy_cache/
+backend/.venv/
