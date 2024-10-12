@@ -1,18 +1,22 @@
 <template>
-    <div class="optionBlock">
-        <div ref="customSelect" class="custom-select" @click="toggleDropdown">
-            <div class="selected-option">{{ selectedText }}</div>
-            <ul class="options-list" v-show="isOpen">
-                <li v-for="(option, index) in options" :key="index" class="option" @click="selectOption(option)">
-                    {{ option.label }}
-                </li>
-            </ul>
-        </div>
+    <div ref="customSelect" class="optionBlock" @click="toggleDropdown">
+        <div class="selected-option">{{ selectedText }}</div>
+        <ul class="options-list" v-show="isOpen">
+            <li v-for="(option, index) in options" :key="index" class="option" @click="selectOption(option)">
+                {{ option.label }}
+            </li>
+        </ul>
     </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
+
+// Props and emits to support v-model
+const props = defineProps({
+    modelValue: String
+})
+const emit = defineEmits(['update:modelValue'])
 
 const options = [
     { label: 'Customer', value: 'customer' },
@@ -21,18 +25,17 @@ const options = [
 ]
 
 const selectedText = ref('Select Role')
-const selectedValue = ref(null)
 const isOpen = ref(false)
-
 const customSelect = ref(null)
 
+// methods to close and open option menu
 const toggleDropdown = () => {
     isOpen.value = !isOpen.value
 }
 
 const selectOption = (option) => {
     selectedText.value = option.label
-    selectedValue.value = option.value
+    emit('update:modelValue', option.value) // Emit the selected value to the parent
     isOpen.value = false
 }
 
@@ -43,21 +46,25 @@ const closeDropdown = (e) => {
     }
 }
 
+// When component mounts, close dropdown on outside click
 onMounted(() => {
     document.addEventListener('click', closeDropdown)
 })
+
+// Watch for changes to modelValue to sync selected text
+watch(() => props.modelValue, (newValue) => {
+    const selectedOption = options.find(option => option.value === newValue)
+    selectedText.value = selectedOption ? selectedOption.label : 'Select Role'
+}, { immediate: true })
+
 </script>
 
+
 <style scoped>
-/* Role Option Block */
 .optionBlock {
-    display: inline-block;
+    position: relative;
     width: clamp(20rem, 25vw + 10rem, 50rem);
     margin-bottom: 1rem;
-}
-
-.custom-select {
-    position: relative;
     border-radius: 1rem;
     height: 3rem;
     background-color: rgba(255, 255, 255, 0.2);
@@ -72,16 +79,15 @@ onMounted(() => {
 }
 
 .selected-option {
-    display: block;
+    font-weight: bold;
     padding-left: 1.5rem;
 }
 
 .options-list {
-    display: none;
     position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
+    width: inherit;
+    top: 110%;
+    right: 1px;
     background-color: rgba(0, 0, 0, 0.95);
     color: rgba(255, 255, 255, 0.6);
     border-radius: 0.5rem;
