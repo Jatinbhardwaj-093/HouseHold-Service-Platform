@@ -9,6 +9,7 @@ import AdminHome from '@/components/Admin/AdminHome.vue';
 <template>
     <div>
         <AdminNavbar/>
+        <br>
         <AdminHome/>
     </div>
 </template>

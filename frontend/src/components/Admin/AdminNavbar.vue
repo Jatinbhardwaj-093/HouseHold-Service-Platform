@@ -7,9 +7,9 @@
 <template>
     <div>
         <div class="navbar">
-        <div class="home">Home</div>
-        <div class="professional">Professional</div>
-        <div class="cutomer">Customer</div>
+        <div><router-link class="home" :to="{ name: 'admin' }">Home</router-link></div>
+        <div ><router-link class="professional" :to="{ name: 'professional-detail' }">Professional</router-link></div>
+        <div><router-link class="customer" :to="{name: 'customer-detail'}">Customer</router-link></div>
         <div class="Statistics">Statistics</div>
         <div class="logout">
             <p>Logout</p>
@@ -33,6 +33,14 @@
     border-radius: 1rem;
     background-color: rgba(255, 90, 1, 0.8);
     box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.6);
+}
+
+.home, .professional, .customer, .Statistics{
+    text-decoration: none;
+    cursor: pointer;
+    color: #fff;
+    font-size: 1.2rem;
+    font-weight: bolder;
 }
 
 .navbar > div{

@@ -3,6 +3,8 @@ import LoginView from '@/views/LoginView.vue';
 import SignUpView from '@/views/SignUpView.vue';
 import CustomerHomeView from '@/views/CustomerHomeView.vue';
 import AdminHomeView from '@/views/AdminHomeView.vue';
+import Admin_ProfessionalDetailView from '@/views/Admin_ProfessionalDetailView.vue';
+import Admin_CustomerDetailView from '@/views/Admin_CustomerDetailView.vue';
 
 const routes = [
   {
@@ -25,6 +27,18 @@ const routes = [
     path: '/admin',
     name: 'admin',
     component: AdminHomeView,
+    meta: { requiresAuth: true, role: 'admin' }
+  },
+  {
+    path: '/admin/professional-detail',
+    name: 'professional-detail',
+    component: Admin_ProfessionalDetailView,
+    meta: { requiresAuth: true, role: 'admin' }
+  },
+  {
+    path: '/admin/customer-detail',
+    name: 'customer-detail',
+    component: Admin_CustomerDetailView,
     meta: { requiresAuth: true, role: 'admin' }
   },
   {

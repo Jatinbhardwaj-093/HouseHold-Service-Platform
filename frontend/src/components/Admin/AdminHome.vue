@@ -90,7 +90,7 @@ onMounted(() => {
     overflow: scroll;
     scrollbar-width: thin;
     width: 95%;
-    height: 100vh;
+    height: 90vh;
     margin: auto;
     padding: 2rem;
     border-radius: 1rem;
