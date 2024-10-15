@@ -1,68 +1,20 @@
-<script setup>
-import { ref, onMounted } from 'vue';
-
-const data = ref(null);
-const error = ref(null);
-
-onMounted(() => {
-    const token = localStorage.getItem('token');
-    const userRole = localStorage.getItem('user_role');
-
-    if (!token || userRole !== 'admin') {
-        window.location.href = '/'; // Redirect to login if no token or not admin
-    } else {
-        fetch('/admin/', {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok ' + response.statusText);
-            }
-            return response.json();
-        })
-        .then(fetchedData => {
-            data.value = fetchedData; // Store fetched data
-        })
-        .catch(err => {
-            error.value = 'Error: ' + err.message; // Set error message
-        });
-    }
-});
-</script>
-
-
 <template>
     <div class="container">
         <div class="top">
             <div class="searchBar">
                 <input type="text" class="search" placeholder="Service Name">
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
-                    <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
-                    <g id="SVGRepo_iconCarrier">
-                        <path
-                            d="M11 6C13.7614 6 16 8.23858 16 11M16.6588 16.6549L21 21M19 11C19 15.4183 15.4183 19 11 19C6.58172 19 3 15.4183 3 11C3 6.58172 6.58172 3 11 3C15.4183 3 19 6.58172 19 11Z"
-                            stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-                    </g>
-                </svg>
+                <div class="searchBtn" v-html="Search"></div>
             </div>
-            <div class="createNewBtn">Create New +</div>
+            <div class="createNewBtn" @click="showModal = true">Create New +</div>
         </div>
+
         <div class="blocks">
             <div class="block">
-                <!-- <img src="/service icon/water-supply.png" class="serviceImg" alt=""> -->
                 <div class="serviceName">
                     <p>Plumber</p>
                     <details>
                         <summary>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                class="bi bi-three-dots-vertical" viewBox="0 0 16 16">
-                                <path
-                                    d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0" />
-                            </svg>
+                            <p class="menuDot" v-html="MenuDot"></p>
                         </summary>
                         <ul>
                             <li>View</li>
@@ -73,43 +25,88 @@ onMounted(() => {
                 </div>
             </div>
         </div>
+
+        <Modal :showModal="showModal" @closeModal="showModal = false" />
     </div>
 </template>
 
+<script setup>
+import { ref, onMounted } from 'vue';
+import Modal from './ServiceCreateModel.vue';
+import Search from '@/assets/svg/Search.svg?raw';
+import MenuDot from '@/assets/svg/MenuDot.svg?raw';
 
+const showModal = ref(false);
+const data = ref(null);
+const error = ref(null);
 
+onMounted(() => {
+    const token = localStorage.getItem('token');
+    const userRole = localStorage.getItem('user_role');
+
+    if (!token || userRole !== 'admin') {
+        window.location.href = '/';
+    } else {
+        fetch('/admin/', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok ' + response.statusText);
+                }
+                return response.json();
+            })
+            .then(fetchedData => {
+                data.value = fetchedData; 
+            })
+            .catch(err => {
+                error.value = 'Error: ' + err.message; 
+            });
+    }
+});
+</script>
 <style scoped>
-.top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 3rem;
-}
 
-.container {
+.container{
     overflow: scroll;
     scrollbar-width: thin;
     width: 95%;
-    height: 90vh;
+    height: 100vh;
     margin: auto;
     padding: 2rem;
     border-radius: 1rem;
-    box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.6);
+    box-shadow:  5px 5px 10px rgba(0, 0, 0, 0.6);
     background-color: #3C3C3C;
 }
 
-.searchBar {
+.top{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.searchBar{
     display: flex;
     justify-content: space-between;
     background-color: black;
-    box-shadow: 5px 5px 10px rgb(0, 0, 0);
+    box-shadow: 5px 5px 10px rgb(42, 42, 42);
     border-radius: 0.5rem;
     padding: 0.5rem;
-    width: 70%;
+    width: max(70%);
 }
 
-input {
-    display: inline;
+.searchBtn{
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+    vertical-align: middle;
+}
+
+input{
     background-color: transparent;
     border: none;
     outline: none;
@@ -119,32 +116,25 @@ input {
     padding-left: 1rem;
 }
 
-input:focus::placeholder {
+input:focus::placeholder{
     color: transparent;
 }
 
-svg {
-    width: 30px;
-    height: 30px;
-    cursor: pointer;
-    vertical-align: middle;
-}
 
-.createNewBtn {
-    height: 2.5rem;
+.createNewBtn{
     width: 10rem;
     cursor: pointer;
     text-align: center;
-    font-size: 1.2rem;
+    font-size: 1.25rem;
     font-weight: bold;
     color: white;
     border-radius: 0.5rem;
-    padding: 0.5rem;
-    background-image: linear-gradient(to right, #E95401, #832F01);
+    padding: 0.6rem;
+    background-image: linear-gradient( to right,#E95401,#832F01 );
     overflow: hidden;
 }
 
-.blocks {
+.blocks{
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -153,7 +143,7 @@ svg {
     gap: 1rem;
 }
 
-.block {
+.block{
     position: relative;
     background-color: black;
     width: 100px;
@@ -168,7 +158,7 @@ svg {
     gap: 5px;
 }
 
-.serviceName {
+.serviceName{
     display: flex;
     align-items: center;
     justify-content: center;
@@ -180,13 +170,13 @@ svg {
     font-weight: bolder;
 }
 
-img {
+img{
     width: 50px;
     height: 50px;
     text-align: center;
 }
 
-details summary svg {
+details summary .menuDot{
     background-color: #2c2b2b;
     padding: 2px;
     border-radius: 2px;
@@ -194,19 +184,19 @@ details summary svg {
     height: 20px;
 }
 
-details summary svg:hover {
+details summary .menuDot:hover{
     outline: #832F01 2px solid;
 }
 
 
-details {
+details{
     position: relative;
 }
 
-details ul {
+details ul{
     position: absolute;
     top: -200%;
-    left: 150%;
+    left: 150%; 
     list-style: none;
     width: max-content;
     background-color: #4F4F4F;
@@ -215,23 +205,24 @@ details ul {
     z-index: 100;
 }
 
-details ul li {
+details ul li{
     text-align: start;
     cursor: pointer;
     padding: 2px 15px;
 }
 
-details ul li:hover {
+details ul li:hover{
     background-color: #424242;
     border-radius: 0.2rem;
     color: white;
 }
 
-details summary {
+details summary{
     list-style-type: none;
 }
 
-details[open] summary svg {
+details[open] summary .menuDot{
     background-color: #832F01;
 }
+
 </style>

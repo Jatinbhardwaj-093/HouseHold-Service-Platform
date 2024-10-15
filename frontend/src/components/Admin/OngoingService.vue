@@ -1,8 +1,10 @@
+<script setup></script>
+
 <template>
     <div>
         <div class="container">
             <div class="searchBar">
-                <input type="text" class="search" placeholder="Search by customer name">
+                <input type="text" class="search" placeholder="Search by customer name" />
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
                     <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
@@ -17,12 +19,12 @@
                 <thead>
                     <tr class="headrow">
                         <th>S.No</th>
+                        <th>Service ID</th>
+                        <th>Professional</th>
                         <th>Customer</th>
-                        <th style="width: 30%;">Address</th>
-                        <th>Email</th>
-                        <th>Contact</th>
-                        <th>Pin Code</th>
-                        <th>Status</th>
+                        <th>P - Pin Code</th>
+                        <th>C - Pin Code</th>
+                        <th>Validity</th>
                         <th></th>
                         <th></th>
                     </tr>
@@ -63,7 +65,7 @@
     margin: auto;
     border-radius: 1rem;
     box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.6);
-    background-color: #3C3C3C;
+    background-color: #3c3c3c;
     overflow-y: hidden;
     overflow-x: scroll;
     scrollbar-width: thin;
@@ -78,7 +80,6 @@
     padding: 0.5rem;
     margin: 2rem;
     width: min(100%, 800px);
-
 }
 
 input {
@@ -104,7 +105,6 @@ table {
     border-radius: 0.5rem;
     overflow: hidden;
     margin: auto;
-
 }
 
 th,
@@ -129,7 +129,7 @@ tr:nth-child(even) {
 
 tr {
     color: #f5f5dc;
-    background-color: #3C3C3C;
+    background-color: #3c3c3c;
 }
 
 .option {
@@ -141,7 +141,7 @@ tr {
 
 button {
     border: none;
-    border-radius: .2rem;
+    border-radius: 0.2rem;
     width: 4rem;
     color: white;
     cursor: pointer;
@@ -154,10 +154,9 @@ svg {
 }
 
 button {
-    background-color: #1E1E1E;
+    background-color: #1e1e1e;
     color: #fe772e;
     padding: 3px;
     text-align: center;
-
 }
 </style>

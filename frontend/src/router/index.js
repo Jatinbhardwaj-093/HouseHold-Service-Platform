@@ -5,6 +5,7 @@ import CustomerHomeView from '@/views/CustomerHomeView.vue';
 import AdminHomeView from '@/views/AdminHomeView.vue';
 import Admin_ProfessionalDetailView from '@/views/Admin_ProfessionalDetailView.vue';
 import Admin_CustomerDetailView from '@/views/Admin_CustomerDetailView.vue';
+import Admin_OngoinServiceView from '@/views/Admin_OngoinServiceView.vue';
 
 const routes = [
   {
@@ -16,12 +17,6 @@ const routes = [
     path: '/signup',
     name: 'signup',
     component: SignUpView
-  },
-  {
-    path: '/customer',
-    name: 'customer',
-    component: CustomerHomeView,
-    meta: { requiresAuth: true, role: 'customer' }
   },
   {
     path: '/admin',
@@ -40,6 +35,18 @@ const routes = [
     name: 'customer-detail',
     component: Admin_CustomerDetailView,
     meta: { requiresAuth: true, role: 'admin' }
+  },
+  {
+    path: '/admin/ongoing-service',
+    name: 'ongoing-service',
+    component: Admin_OngoinServiceView,
+    meta: { requiresAuth: true, role: 'admin' }
+  },
+  {
+    path: '/customer',
+    name: 'customer',
+    component: CustomerHomeView,
+    meta: { requiresAuth: true, role: 'customer' }
   },
   {
     path: '/professional',
