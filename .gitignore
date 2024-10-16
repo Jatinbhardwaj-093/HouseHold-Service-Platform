@@ -28,6 +28,9 @@ backend/.env
 # Flask
 # Ignore Python bytecode and other cache files
 __pycache__/
+backend/__pycache__/
+backend/api/__pycache__/
+backend/models/__pycache__/
 backend/*.pyc
 backend/*.pyo
 backend/instance/
