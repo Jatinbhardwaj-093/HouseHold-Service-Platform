@@ -5,30 +5,15 @@
                 <p v-html="Img"></p>
                 <input type="file" class="ImgFilePath" @change="imgPath" accept="image/*" />
             </div>
-            <input
-                type="text"
-                class="serviceName"
-                placeholder="SERVICE NAME"
-                v-model="formData.serviceName"
-            />
-            <textarea
-                class="serviceDescription"
-                placeholder="DESCRIPTION....."
-                v-model="formData.Description"
-            ></textarea>
-            <input
-                type="number"
-                class="servicePrice"
-                placeholder="PRICE"
-                v-model="formData.servicePrice"
-            />
+            <input type="text" class="serviceName" placeholder="SERVICE NAME" v-model="formData.serviceName" />
+            <textarea class="serviceDescription" placeholder="DESCRIPTION....."
+                v-model="formData.description"></textarea>
+            <input type="number" class="servicePrice" placeholder="PRICE" v-model="formData.price" />
             <button type="submit" class="btn">Add</button>
         </form>
         <div v-html="Cross" class="cross" @click="closeModal"></div>
     </div>
-    <div class="modal-background" @click="closeModal"></div>
 </template>
-
 <script setup>
 import Img from '@/assets/svg/Img.svg?raw'
 import Cross from '@/assets/svg/Cross.svg?raw'
@@ -39,20 +24,23 @@ import axios from 'axios'
 const formData = ref({
     ImgFilePath: null,
     serviceName: '',
-    Description: '',
-    servicePrice: 0
+    description: '',
+    price: null
 })
 
 const imgPath = (event) => {
     const file = event.target.files[0]
 
     if (!file) {
-        console.error('No file selected')
         return
     }
-    formData.value.ImgFilePath = file
 
-    console.log('File:', file)
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
+
+    reader.onload = () => {
+        formData.value.ImgFilePath = reader.result
+    }
 }
 
 const submitForm = async () => {
@@ -62,9 +50,10 @@ const submitForm = async () => {
                 'Content-Type': 'application/json'
             }
         })
-        console.log('Response:', response.data)
+        console.log(response.data)
+        closeModal()
     } catch (error) {
-        console.error('Error:', error.response ? error.response.data : error.message)
+        console.error('Error occurred:', error.response ? error.response.data : error.message)
     }
 }
 
@@ -75,9 +64,16 @@ const { showModal } = defineProps({
 const emit = defineEmits(['closeModal'])
 
 function closeModal() {
+    formData.value = {
+        ImgFilePath: null,
+        serviceName: '',
+        description: '',
+        price: null
+    }
     emit('closeModal')
 }
 </script>
+
 
 <style scoped>
 .modal {
@@ -93,13 +89,6 @@ function closeModal() {
     display: flex;
     justify-content: center;
     align-items: center;
-}
-
-.modal-background {
-    position: absolute;
-    /* width: 100%;
-    height: 100%; */
-    background-color: rgba(0, 0, 0, 0.6);
 }
 
 .serviceImg {
@@ -180,13 +169,13 @@ form textarea:focus::placeholder {
 .btn {
     margin-top: 0.5rem;
     width: 5rem;
-    height: 1.7rem;
+    height: 2rem;
     border-radius: 0.3rem;
     border: none;
     background: #ff5a01d5;
     box-shadow: 2px 5px 20px rgba(0, 0, 0, 0.6);
     color: #fff;
-    font-size: 1rem;
+    font-size: 1.25rem;
     font-weight: bolder;
     cursor: pointer;
 }
