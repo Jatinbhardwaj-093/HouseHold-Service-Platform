@@ -42,13 +42,13 @@ class Services(db.Model):
     professionalServiceType = db.relationship('Professional', backref='serviceType', lazy=True)
     
     
-# class Img(db.Model):
-#     __tablename__ = 'Img'
-#     id = db.Column(db.Integer, primary_key=True)
-#     name = db.Column(db.Text, nullable=False)
-#     filepath = db.Column(db.String(200), nullable=False)
-#     mimetype = db.Column(db.Text, nullable=False)
-#     influencer_id = db.Column(db.Integer, db.ForeignKey('influencer.influencer_id'))  
+class ServiceImg(db.Model):
+    __tablename__ = 'ServiceImg'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.Text, nullable=False)
+    filepath = db.Column(db.String(200), nullable=False)
+    mimetype = db.Column(db.Text, nullable=False)
+    Service_id = db.Column(db.Integer, db.ForeignKey('Services.id'))  
     
 class ServiceRequest(db.Model):
     __tablename__ = 'serviceRequest'
