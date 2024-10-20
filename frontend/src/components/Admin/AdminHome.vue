@@ -8,70 +8,153 @@
             <div class="createNewBtn" @click="showModal = true">Create New +</div>
         </div>
 
-        <div class="blocks">
-            <div class="block">
+        <div class="blocks" >
+            <div class="block" v-for="service in servicesData" :key="service.id">
+                <img v-if="service.image" :src="service.image.filepath"/>
+                <div v-else class="serviceImgHolder"><p v-html="NoImg"></p></div>
                 <div class="serviceName">
-                    <p>Plumber</p>
+                    <p>{{ service.name }}</p>
                     <details>
                         <summary>
                             <p class="menuDot" v-html="MenuDot"></p>
                         </summary>
                         <ul>
-                            <li>View</li>
-                            <li>Edit</li>
-                            <li>Delete</li>
+                            <li @click="viewService(service.id)">View</li>
+                            <li @click="openEditModal(service)">Edit</li>
+                            <li @click="deleteService(service.id)">Delete</li>
                         </ul>
                     </details>
                 </div>
             </div>
         </div>
 
+        <!-- Modal for creating new service -->
         <Modal :showModal="showModal" @closeModal="showModal = false" />
+
+        <!-- Modal for viewing service details -->
+        <ServiceModal :showServiceModal="showServiceModal" :serviceData="selectedService" @closeServiceModal="showServiceModal = false" />
+
+        <!-- Modal for editing existing service -->
+        <EditModal :showEditModal="showEditModal" :serviceToEdit="editServiceData" @closeEditModal="showEditModal = false" />
     </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import axios from 'axios';
 import Modal from './ServiceCreateModel.vue';
+import ServiceModal from './ServiceDetailModel.vue';
+import EditModal from './ServiceEditModel.vue';
 import Search from '@/assets/svg/Search.svg?raw';
 import MenuDot from '@/assets/svg/MenuDot.svg?raw';
+import NoImg from '@/assets/svg/NoImg.svg?raw';
 
-const showModal = ref(false);
-const data = ref(null);
+// State management
+const showModal = ref(false);              // For the "Create New" modal
+const showServiceModal = ref(false);       // For the "View Service" modal
+const showEditModal = ref(false);          // For the "Edit Service" modal
+const servicesData = ref([]);              // List of all services fetched from backend
+const selectedService = ref(null);         // Service data for viewing in detail modal
+const editServiceData = ref({              // Pre-filled data for the edit service modal
+    service_name: '',
+    description: '',
+    price: '',
+    service_id: null,
+    image: null
+});
+
 const error = ref(null);
 
-onMounted(() => {
+// Fetch all services
+onMounted(async () => {
     const token = localStorage.getItem('token');
     const userRole = localStorage.getItem('user_role');
 
     if (!token || userRole !== 'admin') {
-        window.location.href = '/';
+        window.location.href = '/'; 
     } else {
-        fetch('/admin/', {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok ' + response.statusText);
+        try {
+            const response = await axios.get('http://127.0.0.1:5000/admin/', {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
                 }
-                return response.json();
-            })
-            .then(fetchedData => {
-                data.value = fetchedData; 
-            })
-            .catch(err => {
-                error.value = 'Error: ' + err.message; 
             });
+            servicesData.value = response.data; 
+            console.log(servicesData.value);  
+        } catch (err) {
+            error.value = 'Error: ' + (err.response ? err.response.data : err.message); 
+        }
     }
 });
+
+// View service details
+const viewService = async (serviceId) => {
+    const token = localStorage.getItem('token');
+    try {
+        const response = await axios.get(`http://127.0.0.1:5000/admin/service/${serviceId}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        selectedService.value = response.data;  
+        showServiceModal.value = true;         
+    } catch (err) {
+        error.value = 'Error: ' + (err.response ? err.response.data : err.message);
+    }
+};
+
+// Edit service
+const openEditModal = (service) => {
+    editServiceData.value = {
+        service_name: service.name,
+        description: service.description,
+        price: service.price,
+        service_id: service.id,   
+        ImageFilePath: service.image
+    };
+    showEditModal.value = true;
+};
+
+// Delete service 
+const deleteService = async (serviceId) => {
+    const token = localStorage.getItem('token');
+    try {
+        await axios.delete(`http://127.0.0.1:5000/admin/service/${serviceId}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        alert('Service deleted successfully');
+        await fetchServices(); 
+    } catch (err) {
+        error.value = 'Error: ' + (err.response ? err.response.data : err.message);
+    }
+};
+
+// Refresh servicesData after edit or delete
+const fetchServices = async () => {
+    const token = localStorage.getItem('token');
+    try {
+        const response = await axios.get('http://127.0.0.1:5000/admin/', {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+        servicesData.value = response.data; 
+    } catch (error) {
+        console.error('Failed to fetch services:', error);
+    }
+};
+
 </script>
 
 <style scoped>
-
-.container{
+.container {
     overflow: scroll;
     scrollbar-width: thin;
     width: 95%;
@@ -79,18 +162,18 @@ onMounted(() => {
     margin: auto;
     padding: 2rem;
     border-radius: 1rem;
-    box-shadow:  5px 5px 10px rgba(0, 0, 0, 0.6);
-    background-color: #3C3C3C;
+    box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.6);
+    background-color: #3c3c3c;
 }
 
-.top{
+.top {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 2rem;
 }
 
-.searchBar{
+.searchBar {
     display: flex;
     justify-content: space-between;
     background-color: black;
@@ -100,14 +183,14 @@ onMounted(() => {
     width: max(70%);
 }
 
-.searchBtn{
+.searchBtn {
     width: 30px;
     height: 30px;
     cursor: pointer;
     vertical-align: middle;
 }
 
-input{
+input {
     background-color: transparent;
     border: none;
     outline: none;
@@ -117,12 +200,11 @@ input{
     padding-left: 1rem;
 }
 
-input:focus::placeholder{
+input:focus::placeholder {
     color: transparent;
 }
 
-
-.createNewBtn{
+.createNewBtn {
     width: 10rem;
     cursor: pointer;
     text-align: center;
@@ -131,11 +213,11 @@ input:focus::placeholder{
     color: white;
     border-radius: 0.5rem;
     padding: 0.6rem;
-    background-image: linear-gradient( to right,#E95401,#832F01 );
+    background-image: linear-gradient(to right, #e95401, #832f01);
     overflow: hidden;
 }
 
-.blocks{
+.blocks {
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -144,14 +226,14 @@ input:focus::placeholder{
     gap: 1rem;
 }
 
-.block{
+.block {
     position: relative;
     background-color: black;
-    width: 100px;
-    height: 100px;
+    width: 120px;
+    height: 120px;
     border-radius: 0.5rem;
     box-shadow: 2px 5px 20px rgba(0, 0, 0, 0.6);
-    padding: 10px;
+    padding: 5px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -159,11 +241,11 @@ input:focus::placeholder{
     gap: 5px;
 }
 
-.serviceName{
+.serviceName {
     display: flex;
-    align-items: center;
     justify-content: center;
-    gap: 5px;
+    align-items: end;
+    gap: 10px;
     width: 100%;
     text-align: center;
     color: #fff;
@@ -171,13 +253,27 @@ input:focus::placeholder{
     font-weight: bolder;
 }
 
-img{
+img {
     width: 50px;
     height: 50px;
-    text-align: center;
+    object-fit: cover;
+    border-radius: 0.25rem;
 }
 
-details summary .menuDot{
+.serviceImgHolder {
+    width: 90px;
+    height: 70px;
+    background-color: antiquewhite;
+    border-radius: 0.25rem;
+}
+
+.serviceImgHolder p {
+    width: 70px;
+    height: 40px;
+    margin: auto;
+}
+
+details summary .menuDot {
     background-color: #2c2b2b;
     padding: 2px;
     border-radius: 2px;
@@ -185,45 +281,43 @@ details summary .menuDot{
     height: 20px;
 }
 
-details summary .menuDot:hover{
-    outline: #832F01 2px solid;
+details summary .menuDot:hover {
+    outline: #832f01 2px solid;
 }
 
-
-details{
+details {
     position: relative;
 }
 
-details ul{
+details ul {
     position: absolute;
     top: -200%;
-    left: 150%; 
+    left: 170%;
     list-style: none;
-    width: max-content;
-    background-color: #4F4F4F;
+    background-color: #4f4f4f;
     color: white;
     border-radius: 0.2rem;
-    z-index: 100;
+    z-index: 2;
+    padding-left: 0px;
 }
 
-details ul li{
+details ul li {
     text-align: start;
     cursor: pointer;
-    padding: 2px 15px;
+    padding: 2px 10px;
 }
 
-details ul li:hover{
+details ul li:hover {
     background-color: #424242;
     border-radius: 0.2rem;
     color: white;
 }
 
-details summary{
+details summary {
     list-style-type: none;
 }
 
-details[open] summary .menuDot{
-    background-color: #832F01;
+details[open] summary .menuDot {
+    background-color: #832f01;
 }
-
 </style>
