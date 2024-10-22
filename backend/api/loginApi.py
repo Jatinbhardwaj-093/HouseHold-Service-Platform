@@ -35,7 +35,7 @@ def login():
     else:
         return jsonify({'message': 'Invalid role'}), 401
 
-    if found_user and found_user.password == password:
+    if found_user and bcrypt.check_password_hash(found_user.password,password):
         token_data = {
             'username': found_user.username,
             'role': role  
