@@ -8,12 +8,10 @@ import { RouterLink } from 'vue-router';
     <div>
         <h1 class="heading">SIGN UP</h1>
         <div class="container">
-            <div class="customerSignUp">
-                <button>CUSTOMER/USER</button>
-            </div>
-            <div class="professionalSignUp">
-                <button>SERVICE PROFFESIONAL</button>
-            </div>
+            <RouterLink class="customerSignUp" :to="{ name : 'customer-signup'}" > CUSTOMER/USER </RouterLink>
+            
+            <button class="professionalSignUp">SERVICE PROFFESIONAL</button>
+
 
             <div class="signInLine">
                 <p>Already have an account? </p>
@@ -45,8 +43,8 @@ import { RouterLink } from 'vue-router';
     margin-bottom: 1rem;
 }
 
-.customerSignUp button,
-.professionalSignUp button {
+.customerSignUp ,
+.professionalSignUp{
     min-width: 350px;
     color: white;
     font-size: 1.5rem;
@@ -59,6 +57,7 @@ import { RouterLink } from 'vue-router';
     border-radius: 1rem;
     margin-bottom: 2rem;
     cursor: pointer;
+    text-decoration: none;
 }
 
 .customerSignUp button:hover,
