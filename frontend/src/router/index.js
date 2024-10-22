@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import LoginView from '@/views/LoginView.vue';
 import SignUpView from '@/views/SignUpView.vue';
 import CustomerHomeView from '@/views/CustomerHomeView.vue';
+import CustomerSignUpView from '@/views/CustomerSignUpView.vue';
 import AdminHomeView from '@/views/AdminHomeView.vue';
 import Admin_ProfessionalDetailView from '@/views/Admin_ProfessionalDetailView.vue';
 import Admin_CustomerDetailView from '@/views/Admin_CustomerDetailView.vue';
@@ -41,6 +42,11 @@ const routes = [
     name: 'ongoing-service',
     component: Admin_OngoinServiceView,
     meta: { requiresAuth: true, role: 'admin' }
+  },
+  {
+    path: '/customer/signup',
+    name: 'customer-signup',
+    component: CustomerSignUpView,
   },
   {
     path: '/customer',
