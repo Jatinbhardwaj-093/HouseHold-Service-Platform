@@ -10,7 +10,7 @@ from api.adminApi import adminApi
 #congig imports
 from config import Config 
 #bcrypt and jwt instance importing
-from api import bcrypt,jwt
+from api import bcrypt,jwt_manager
 
 
 
@@ -22,7 +22,7 @@ def create_app():
 
     bcrypt.init_app(app)  #Intialize bcrypt hashing library
     db.init_app(app)  # Initialize the db with the app
-    jwt.init_app(app)  # Initialize the JWT library
+    jwt_manager.init_app(app)  # Initialize the JWT library
     migrate = Migrate(app, db)  # Initialize Flask-Migrate
 
     app.register_blueprint(loginApi)  # Register the login API
