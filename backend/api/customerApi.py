@@ -1,7 +1,6 @@
 from flask import Blueprint, jsonify, request
 from models import Customer, db 
-from flask_jwt_extended import jwt_required,get_jwt_identity
-from . import bcrypt
+from . import bcrypt,custom_jwt_required
 
 customerApi = Blueprint('customerApi', __name__)
 
@@ -28,16 +27,63 @@ def signup():
 # Customer Home Api
 
 @customerApi.route('/', methods=['GET'])
+@custom_jwt_required
 def home():
-    services = Services.query.all()
-    response = []
-    for service in services:
-        img = ServiceImg.query.filter_by(Service_id=service.id).first()
-        response.append({
-            'id': service.id,
-            'description': service.description,
-            'price': service.price,
-            'name': service.serviceName,
-            'image': img.filepath if img else None
-        })
-    return jsonify(response)
+    user = request.user
+    founduser = Customer.query.filter_by(username = user).first()
+    if founduser:
+        response = {
+            'password': '',
+            'email': founduser.email,
+            'username': founduser.username,
+            'contact': founduser.contact,
+            'pincode': founduser.pincode,
+            'address': founduser.Address
+        }
+        return jsonify(response), 200
+
+    else:
+        return jsonify({'message': 'User not found'}), 404
+
+# Customer Profile Api
+
+#Read
+@customerApi.route('/profile', methods=['GET'])
+@custom_jwt_required
+def profile():
+    user = request.user
+    founduser = Customer.query.filter_by(username = user).first()
+    
+    if founduser:
+        return jsonify({
+            'id': founduser.id,
+            'email': founduser.email,
+            'username': founduser.username,
+            'contact': founduser.contact,
+            'pincode': founduser.pincode,
+            'address': founduser.Address
+        }), 200
+        
+    else:
+        return jsonify({'message': 'User not found'}), 404   
+    
+#Update
+@customerApi.route('/profile', methods=['PUT'])
+@custom_jwt_required
+def updateProfile():
+    user = request.user
+    founduser = Customer.query.filter_by(username = user).first()
+    if founduser:    
+        data = request.get_json()
+        password = bcrypt.generate_password_hash(data['password'])
+        founduser.username = data['username']
+        founduser.email = data['email']
+        founduser.password = password
+        founduser.contact = data['contact']
+        founduser.pincode = data['pincode']
+        founduser.Address = data['address']
+        db.session.commit()
+        return jsonify({'message': 'Profile updated successfully'}), 200
+    else:
+        return jsonify({'message': 'User not found'}), 404  
+
