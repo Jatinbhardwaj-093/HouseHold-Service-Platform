@@ -1,18 +1,13 @@
 from flask import Blueprint, jsonify,request,current_app
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import custom_jwt_required, get_jwt_identity
 from werkzeug.utils import secure_filename
 from models import Services,ServiceImg,db
-from PIL import Image
 import os
 import base64
 
 adminApi = Blueprint('adminApi', __name__)
 
-# Function to compress the image
-def compress_image(input_path, output_path, quality=85):
-    with Image.open(input_path) as img:
-        img.thumbnail((800, 800)) 
-        img.save(output_path, "JPEG", quality=quality) 
+
 
 #********************** Admin Home Api******************************
 
