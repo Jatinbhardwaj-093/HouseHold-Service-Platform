@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify,request,current_app
-from flask_jwt_extended import custom_jwt_required, get_jwt_identity
+from flask_jwt_extended import get_jwt_identity
 from werkzeug.utils import secure_filename
 from models import Services,ServiceImg,db
 import os

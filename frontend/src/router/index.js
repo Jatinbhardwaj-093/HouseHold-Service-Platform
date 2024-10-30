@@ -1,12 +1,15 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import LoginView from '@/views/LoginView.vue';
 import SignUpView from '@/views/SignUpView.vue';
-import CustomerHomeView from '@/views/CustomerHomeView.vue';
 import CustomerSignUpView from '@/views/CustomerSignUpView.vue';
+import CustomerHomeView from '@/views/CustomerHomeView.vue';
+import Customer_ServiceView from '@/views/Customer_ServiceView.vue';
+import ParticularService from '@/components/Customer/ParticularService.vue';
 import AdminHomeView from '@/views/AdminHomeView.vue';
 import Admin_ProfessionalDetailView from '@/views/Admin_ProfessionalDetailView.vue';
 import Admin_CustomerDetailView from '@/views/Admin_CustomerDetailView.vue';
 import Admin_OngoinServiceView from '@/views/Admin_OngoinServiceView.vue';
+
 
 const routes = [
   {
@@ -52,6 +55,18 @@ const routes = [
     path: '/customer',
     name: 'customer',
     component: CustomerHomeView,
+    meta: { requiresAuth: true, role: 'customer' }
+  },
+  {
+    path: '/customer/services',
+    name: 'customer-services',
+    component: Customer_ServiceView,
+    meta: { requiresAuth: true, role: 'customer' }
+  },
+  {
+    path: '/customer/service/:serviceId',
+    name: 'customer-particular-service',
+    component: ParticularService,
     meta: { requiresAuth: true, role: 'customer' }
   },
   {

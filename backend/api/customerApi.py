@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from models import Customer, db 
+from models import Customer, Services, ServiceImg, db 
 from . import bcrypt,custom_jwt_required
 
 customerApi = Blueprint('customerApi', __name__)
@@ -87,3 +87,37 @@ def updateProfile():
     else:
         return jsonify({'message': 'User not found'}), 404  
 
+#Customer Services Api
+
+#Read
+@customerApi.route('/services', methods=['GET'])
+@custom_jwt_required
+def services():
+    services = Services.query.all()
+    response = []
+    for service in services:
+        response.append({
+            'id': service.id,
+            'name': service.serviceName,
+            'description': service.description,
+            'price': service.price
+        })
+    return jsonify(response), 200
+
+
+# Customer Particular Service Api
+
+#Read
+@customerApi.route('/service/<int:service_id>', methods=['GET'])
+@custom_jwt_required
+def service(service_id):
+    service = Services.query.filter_by(id=service_id).first()
+    if service:
+        return jsonify({
+            'id': service.id,
+            'name': service.serviceName,
+            'description': service.description,
+            'price': service.price
+        }), 200
+    else:
+        return jsonify({'message': 'Service not found'}), 404

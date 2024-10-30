@@ -82,8 +82,8 @@ const closeEditModal = () => {
                 <div class="customerName">{{ customer.username }}</div>
             </div>
             <div class="menu">
-                <div class="home">Home</div>
-                <div class="service">Service</div>
+                <div class="home" @click="$router.push({ name: 'customer' })">Home</div>
+                <div class="service" @click="$router.push({ name: 'customer-services' })">Service</div>
                 <div class="stats">Statistics</div>
             </div>
             <div class="logout" v-html="Logout"></div>
@@ -145,23 +145,16 @@ const closeEditModal = () => {
 .menu {
     display: flex;
     flex-direction: row;
-    align-items: end;
-    justify-content: end;
-    gap: 2rem;
+    gap: 1.5rem;
     color: #fff;
-    font-size: 1rem;
-    font-weight: bolder;
-    font-style: italic;
     margin-top: 0.5rem;
 }
-
 
 .home,
 .service,
 .stats {
     font-size: 1.5rem;
     font-weight: bolder;
-    font-style: italic;
     cursor: pointer;
 }
 
