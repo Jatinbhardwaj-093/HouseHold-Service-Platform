@@ -1,54 +1,109 @@
+<script setup>
+import Search from '@/assets/svg/Search.svg?raw'
+
+import { ref,onMounted } from 'vue'
+import axios from 'axios'
+
+const token = localStorage.getItem('token')
+
+
+// Fetch customers
+const customers = ref([])
+const fetchCustomers = async () => {
+    try {
+        const response = await axios.get('http://127.0.0.1:5000/admin/customers', {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        })
+        customers.value = response.data
+    } catch (err) {
+        console.error('Failed to fetch customers:', err)
+    }
+}
+
+onMounted(() => {
+    fetchCustomers()
+})
+
+// Flag customer and reload data
+const flagCustomer = async (customer) => {
+    try {
+        await axios.put(
+            `http://127.0.0.1:5000/admin/customer/${customer.id}/flag`,
+            {},
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        )
+        if (customer.flag == 'no') {
+            alert('Customer flagged successfully')
+        } else {
+            alert('Customer unflagged successfully')
+        }
+        
+        await fetchCustomers() 
+    } catch (err) {
+        console.error('Failed to flag customer:', err)
+    }
+}
+
+// Delete customer and reload data
+const deleteCustomer = async (customerId) => {
+    try {
+        await axios.delete(`http://127.0.0.1:5000/admin/customer/${customerId}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        })
+        alert('Customer deleted successfully')
+        await fetchCustomers() 
+    } catch (err) {
+        console.error('Failed to delete customer:', err)
+    }
+}
+</script>
+
 <template>
     <div>
         <div class="container">
             <div class="searchBar">
-                <input type="text" class="search" placeholder="Search by customer name">
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
-                    <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
-                    <g id="SVGRepo_iconCarrier">
-                        <path
-                            d="M11 6C13.7614 6 16 8.23858 16 11M16.6588 16.6549L21 21M19 11C19 15.4183 15.4183 19 11 19C6.58172 19 3 15.4183 3 11C3 6.58172 6.58172 3 11 3C15.4183 3 19 6.58172 19 11Z"
-                            stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-                    </g>
-                </svg>
+                <input type="text" class="search" placeholder="Search by customer name" />
+                <div class="searchBtn" v-html="Search"></div>
             </div>
             <table>
                 <thead>
-                    <tr class="headrow">
+                    <tr>
                         <th>S.No</th>
-                        <th>Customer</th>
-                        <th style="width: 30%;">Address</th>
+                        <th>Name</th>
+                        <th>Address</th>
                         <th>Email</th>
                         <th>Contact</th>
-                        <th>Pin Code</th>
+                        <th>Pincode</th>
                         <th>Status</th>
-                        <th></th>
-                        <th></th>
+                        <th>Flag</th>
+                        <th>Delete</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr>
-                        <td>1</td>
-                        <td>Jatin Slith</td>
-                        <td>Plumber</td>
-                        <td>4 Years</td>
-                        <td>110023</td>
-                        <td>5</td>
-                        <td>Ok</td>
-                        <td><button>Flag</button></td>
-                        <td><button>Delete</button></td>
-                    </tr>
-                    <tr>
-                        <td>1</td>
-                        <td>2</td>
-                        <td>3</td>
-                        <td>4</td>
-                        <td>5</td>
-                        <td>5</td>
-                        <td>Flagged</td>
-                        <td><button>UnFlag</button></td>
-                        <td><button>Delete</button></td>
+                    <tr v-for="(customer, index) in customers" :key="customer.id">
+                        <td>{{ index + 1 }}</td>
+                        <td>{{ customer.username }}</td>
+                        <td>{{ customer.address }}</td>
+                        <td>{{ customer.email }}</td>
+                        <td>{{ customer.contact }}</td>
+                        <td>{{ customer.pincode }}</td>
+                        <td v-if="customer.flag == 'yes' ">Flagged</td>
+                        <td v-else>OK</td>
+                        <td>
+                            <button @click="flagCustomer(customer)" v-if="customer.flag == 'no' ">Flag</button>
+                            <button @click="flagCustomer(customer)" v-else>Unflag</button></td>
+                        <td><button @click="deleteCustomer(customer.id)">Delete</button></td>
                     </tr>
                 </tbody>
             </table>
@@ -63,7 +118,7 @@
     margin: auto;
     border-radius: 1rem;
     box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.6);
-    background-color: #3C3C3C;
+    background-color: #3c3c3c;
     overflow-y: hidden;
     overflow-x: scroll;
     scrollbar-width: thin;
@@ -78,7 +133,6 @@
     padding: 0.5rem;
     margin: 2rem;
     width: min(100%, 800px);
-
 }
 
 input {
@@ -104,7 +158,6 @@ table {
     border-radius: 0.5rem;
     overflow: hidden;
     margin: auto;
-
 }
 
 th,
@@ -122,14 +175,14 @@ tr:nth-child(even) {
     background-color: #2f2c2c;
 }
 
-.headrow {
+thead tr {
     color: white;
     background-color: hsla(21, 100%, 50%, 0.85);
 }
 
 tr {
     color: #f5f5dc;
-    background-color: #3C3C3C;
+    background-color: #3c3c3c;
 }
 
 .option {
@@ -141,23 +194,22 @@ tr {
 
 button {
     border: none;
-    border-radius: .2rem;
+    border-radius: 0.2rem;
     width: 4rem;
     color: white;
     cursor: pointer;
 }
 
-svg {
+.searchBtn {
     height: 30px;
     width: 30px;
     cursor: pointer;
 }
 
 button {
-    background-color: #1E1E1E;
+    background-color: #1e1e1e;
     color: #fe772e;
     padding: 3px;
     text-align: center;
-
 }
 </style>
