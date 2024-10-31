@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify,request,current_app
 from flask_jwt_extended import get_jwt_identity
 from werkzeug.utils import secure_filename
-from models import Services,ServiceImg,db
+from models import Services,ServiceImg,Customer,db
 import os
 import base64
 
@@ -154,3 +154,45 @@ def delete_service(service_id):
     return jsonify({'message': 'Service and associated image deleted successfully'}), 200
 
 
+# Admin Customers Api
+
+#Read
+@adminApi.route('/customers', methods=['GET'])
+def customers():
+    customers = Customer.query.all()
+    response = []
+    for customer in customers:
+        response.append({
+            'id': customer.id,
+            'email': customer.email,
+            'username': customer.username,
+            'contact': customer.contact,
+            'pincode': customer.pincode,
+            'address': customer.Address,
+            'flag': customer.flag
+        })
+    return jsonify(response), 200
+
+#Update(Flag)
+@adminApi.route('/customer/<int:customer_id>/flag', methods=['PUT'])
+def update_customer(customer_id):
+    customer = Customer.query.get(customer_id)
+    if not customer:
+        return jsonify({'error': 'Customer not found'}), 404
+    data = request.get_json()
+    if customer.flag == 'yes':
+        customer.flag = 'no'
+    else:
+        customer.flag = 'yes'
+    db.session.commit()
+    return jsonify({'message': 'Customer updated successfully'}), 200   
+
+#Delete
+@adminApi.route('/customer/<int:customer_id>', methods=['DELETE'])
+def delete_customer(customer_id):
+    customer = Customer.query.get(customer_id)
+    if not customer:
+        return jsonify({'error': 'Customer not found'}), 404
+    db.session.delete(customer)
+    db.session.commit()
+    return jsonify({'message': 'Customer deleted successfully'}), 200
