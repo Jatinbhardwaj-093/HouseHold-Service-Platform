@@ -9,6 +9,7 @@ import AdminHomeView from '@/views/AdminHomeView.vue';
 import Admin_ProfessionalDetailView from '@/views/Admin_ProfessionalDetailView.vue';
 import Admin_CustomerDetailView from '@/views/Admin_CustomerDetailView.vue';
 import Admin_OngoinServiceView from '@/views/Admin_OngoinServiceView.vue';
+import ProffesionalSignUp from '@/views/ProffesionalSignUp.vue';
 
 
 const routes = [
@@ -74,6 +75,11 @@ const routes = [
     name: 'professional',
     component: AdminHomeView,
     meta: { requiresAuth: true, role: 'professional' }
+  },
+  {
+    path: '/proffessional/signup',
+    name: 'proffessional-signup',
+    component: ProffesionalSignUp,
   }
 ];
 
