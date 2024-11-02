@@ -10,7 +10,7 @@ import { RouterLink } from 'vue-router';
         <div class="container">
             <RouterLink class="customerSignUp" :to="{ name : 'customer-signup'}" > CUSTOMER/USER </RouterLink>
             
-            <button class="professionalSignUp">SERVICE PROFFESIONAL</button>
+            <RouterLink class="professionalSignUp" :to="{ name : 'proffessional-signup'}">SERVICE PROFFESIONAL</RouterLink>
 
 
             <div class="signInLine">
