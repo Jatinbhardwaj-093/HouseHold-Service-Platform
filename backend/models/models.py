@@ -18,30 +18,27 @@ class Customer(db.Model):
     Address= db.Column(db.String, nullable=False)
     flag = db.Column(db.String, default='no')
     
-
 class Professional(db.Model):
     __tablename__ = 'Professional'
-    id = db.Column(db.Integer, primary_key=True, autoincrement = True)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     email = db.Column(db.String, nullable=False)
-    username= db.Column(db.String, nullable=False)
-    password= db.Column(db.String, nullable=False)
-    # I have a pseudo column name "serviceType" to fetch service details
+    username = db.Column(db.String, nullable=False)
+    password = db.Column(db.String, nullable=False)
     serviceId = db.Column(db.Integer, db.ForeignKey('Services.id'))
-    experience= db.Column(db.Integer, nullable=False)
+    experience = db.Column(db.Integer, nullable=False)
     contact = db.Column(db.Integer, nullable=False)
     pincode = db.Column(db.Integer, nullable=False)
     flag = db.Column(db.String, default='no')
-    
+
+    serviceType = db.relationship('Services', backref='professionals', lazy=True)
 
 class Services(db.Model):
     __tablename__ = 'Services'
-    id = db.Column(db.Integer, primary_key=True, autoincrement = True)
-    serviceName= db.Column(db.String, nullable=False)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    serviceName = db.Column(db.String, nullable=False)
     description = db.Column(db.String, nullable=False)
     price = db.Column(db.String)
-    professionalServiceType = db.relationship('Professional', backref='serviceType', lazy=True)
-    
-    
+
 class ServiceImg(db.Model):
     __tablename__ = 'ServiceImg'
     id = db.Column(db.Integer, primary_key=True)
