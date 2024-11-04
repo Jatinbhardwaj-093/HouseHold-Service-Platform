@@ -45,27 +45,75 @@ def get_services():
             'price': service.price
         })
     return jsonify(response), 200
-    
+
+# Professional Home Api
 @professionalApi.route('/', methods=['GET'])
+@custom_jwt_required
 def home():
-    print('Authorization Header:', request.headers.get('Authorization')) 
     if request.method == 'OPTIONS':
         return jsonify({'message': 'CORS preflight response'}), 200
 
     try:
-        services = Services.query.all()
-        response = []
+        user = request.user
+        founduser = Professional.query.filter_by(username = user).first()
+        if founduser:
+            response = {
+                'id': founduser.id,
+                'username': founduser.username,
+                'password': '',
+                'email': founduser.email,
+                'contact': founduser.contact,
+                'experience': founduser.experience,
+                'pincode': founduser.pincode
+            }
+            return jsonify(response), 200
+        else:
+            return jsonify({'message': 'User not found'}), 404
 
-        for service in services:
-            img = ServiceImg.query.filter_by(Service_id=service.id).first()
-            response.append({
-                'id': service.id,
-                'description': service.description,
-                'price': service.price,
-                'name': service.serviceName,
-                'image': img.filepath if img else None
-            })
-        return jsonify(response), 200
     except Exception as e:
         print(f"Error: {str(e)}")
         return jsonify({'message': 'An error occurred'}), 500
+    
+# Professional Profile Api
+
+#Read
+
+@professionalApi.route('/profile', methods=['GET'])
+@custom_jwt_required
+def profile():
+    user = request.user
+    founduser = Professional.query.filter_by(username = user).first()
+    
+    if founduser:
+        return jsonify({
+            'id': founduser.id,
+            'email': founduser.email,
+            'username': founduser.username,
+            'contact': founduser.contact,
+            'pincode': founduser.pincode,
+            'serviceType': founduser.serviceType.serviceName,
+            'experience': founduser.experience
+        }), 200
+        
+    else:
+        return jsonify({'message': 'User not found'}), 404
+    
+#Update
+@professionalApi.route('/profile', methods=['PUT'])
+@custom_jwt_required
+def updateProfile():
+    user = request.user
+    founduser = Professional.query.filter_by(username = user).first()
+    if founduser:   
+        data = request.get_json()
+        password = bcrypt.generate_password_hash(data['password'])
+        founduser.username = data['username']
+        founduser.email = data['email']
+        founduser.password = password
+        founduser.contact = data['contact']
+        founduser.pincode = data['pincode']
+        founduser.experience = data['experience']
+        db.session.commit()
+        return jsonify({'message': 'Profile updated successfully'}), 200
+    else:
+        return jsonify({'message': 'User not found'}), 404
