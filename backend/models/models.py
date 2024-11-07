@@ -29,6 +29,8 @@ class Professional(db.Model):
     contact = db.Column(db.Integer, nullable=False)
     pincode = db.Column(db.Integer, nullable=False)
     flag = db.Column(db.String, default='no')
+    verify = db.Column(db.String, default='no')
+    rating = db.Column(db.Integer, nullable=False, default=0)
 
     serviceType = db.relationship('Services', backref='professionals', lazy=True)
 
@@ -53,7 +55,9 @@ class ServiceRequest(db.Model):
     serviceId = db.Column(db.Integer, db.ForeignKey('Services.id'))
     customerId = db.Column(db.Integer, db.ForeignKey('Customer.id'))
     professionalId = db.Column(db.Integer, db.ForeignKey('Professional.id'))
+    requestDate= db.Column(db.Date, nullable=False)
+    completionDate= db.Column(db.Date)
     customerStatus = db.Column(db.String, default='requested')
-    professionalStatus = db.Column(db.String, default='requested')
-    service = db.relationship('Services', backref='serviceRequest', lazy=True)
+    professionalStatus = db.Column(db.String, default='pending')
     
+    service = db.relationship('Services', backref='serviceRequest', lazy=True)
