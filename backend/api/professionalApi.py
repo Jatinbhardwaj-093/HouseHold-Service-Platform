@@ -1,8 +1,9 @@
 from flask import Blueprint, jsonify, request
-from models import Professional, db ,Services, ServiceImg
+from models import Professional, db ,Services,ServiceRequest, ServiceImg,Customer
 import jwt
 from flask_bcrypt import Bcrypt
 from . import bcrypt,custom_jwt_required
+from datetime import datetime
 
 professionalApi = Blueprint('professionalApi', __name__)
 
@@ -115,5 +116,82 @@ def updateProfile():
         founduser.experience = data['experience']
         db.session.commit()
         return jsonify({'message': 'Profile updated successfully'}), 200
+    else:
+        return jsonify({'message': 'User not found'}), 404
+    
+#Professional Services Request Api
+
+#Read
+@professionalApi.route('/service/requests', methods=['GET'])
+@custom_jwt_required
+def serviceRequests():
+    user = request.user
+    founduser = Professional.query.filter_by(username = user).first()
+    if founduser:
+        requests = ServiceRequest.query.filter_by(professionalId = founduser.id).all()
+        newRequests = []
+        ongoingRequests = []
+        for serviceRequest in requests:
+            foundCustomer = Customer.query.filter_by(id = serviceRequest.customerId).first()
+            data = {
+                'id': serviceRequest.id,
+                'customerId': serviceRequest.customerId,
+                'customerName': foundCustomer.username,
+                'customerAddress': foundCustomer.Address,
+                'customerContact': foundCustomer.contact,
+                'customerPincode': foundCustomer.pincode,
+                'requestDate': serviceRequest.requestDate,
+                'completionDate': serviceRequest.completionDate,
+                'customerStatus': serviceRequest.customerStatus,
+                'professionalStatus': serviceRequest.professionalStatus
+            }
+            if serviceRequest.professionalStatus == 'pending':
+                newRequests.append(data)
+            elif serviceRequest.professionalStatus == 'accepted':
+                ongoingRequests.append(data)
+        response = {
+            'newRequests': newRequests,
+            'ongoingRequests': ongoingRequests
+        }
+        return jsonify(response), 200
+    else:
+        return jsonify({'message': 'User not found'}), 404
+    
+#Update Service Booking
+@professionalApi.route('/service/request/<int:booking_id>', methods=['PUT'])
+@custom_jwt_required
+def updateServiceBooking(booking_id):
+    user = request.user
+    founduser = Professional.query.filter_by(username = user).first()
+    if founduser:
+        data = request.get_json()
+        booking = ServiceRequest.query.filter_by(id = booking_id).first()
+        if booking:
+            if data['professionalStatus'] == 'accepted':
+                booking.customerStatus = 'Pending'
+            booking.professionalStatus = data['professionalStatus']    
+            db.session.commit()
+            return jsonify({'message': 'Booking updated successfully'}), 200
+        else:
+            return jsonify({'message': 'Booking not found'}), 404
+    else:
+        return jsonify({'message': 'User not found'}), 404
+    
+#Update Service Completion
+@professionalApi.route('/service/request/<int:booking_id>/complete', methods=['PUT'])
+@custom_jwt_required
+def updateServiceCompletion(booking_id):
+    user = request.user
+    founduser = Professional.query.filter_by(username = user).first()
+    if founduser:
+        data = request.get_json()
+        booking = ServiceRequest.query.filter_by(id = booking_id).first()
+        if booking:
+            booking.completionDate = datetime.strptime(data['completionDate'], "%Y-%m-%d").date()
+            booking.professionalStatus = 'completed'
+            db.session.commit()
+            return jsonify({'message': 'Booking updated successfully'}), 200
+        else:
+            return jsonify({'message': 'Booking not found'}), 404
     else:
         return jsonify({'message': 'User not found'}), 404
