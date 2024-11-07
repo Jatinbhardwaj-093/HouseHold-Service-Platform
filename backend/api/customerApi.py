@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
-from models import Customer, Services, ServiceImg, db 
+from models import Customer, Services, ServiceImg,ServiceRequest,Professional, db 
 from . import bcrypt,custom_jwt_required
+from datetime import datetime
 
 customerApi = Blueprint('customerApi', __name__)
 
@@ -32,7 +33,8 @@ def home():
     user = request.user
     founduser = Customer.query.filter_by(username = user).first()
     if founduser:
-        response = {
+        # customer details
+        customer = {
             'password': '',
             'email': founduser.email,
             'username': founduser.username,
@@ -40,6 +42,28 @@ def home():
             'pincode': founduser.pincode,
             'address': founduser.Address
         }
+        
+        # customer service bookings
+        bookings = ServiceRequest.query.filter_by(customerId = founduser.id).all()
+        service_bookings = []
+        for booking in bookings:
+            foundProfessional = Professional.query.filter_by(id = booking.professionalId).first()
+            service_bookings.append({
+                'id': booking.id,
+                'serviceName': booking.service.serviceName,
+                'professionalName': foundProfessional.username,
+                'requestDate': booking.requestDate,
+                'completionDate': booking.completionDate,
+                'customerStatus': booking.customerStatus,
+                'professionalStatus': booking.professionalStatus
+            })
+
+        # response data
+        response = {
+            'customer': customer,
+            'service_bookings': service_bookings
+        }
+        
         return jsonify(response), 200
 
     else:
@@ -113,11 +137,70 @@ def services():
 def service(service_id):
     service = Services.query.filter_by(id=service_id).first()
     if service:
+        response = []
+        for professional in service.professionals:
+            response.append({
+                'professional_id': professional.id,
+                'professional_name': professional.username,
+                'professional_email': professional.email,
+                'professional_contact': professional.contact,
+                'professional_pincode': professional.pincode,
+                'professional_experience': professional.experience,
+                'professional_rating': professional.rating
+            })
         return jsonify({
-            'id': service.id,
-            'name': service.serviceName,
-            'description': service.description,
-            'price': service.price
+            'service': {
+                'id': service.id,
+                'service_name': service.serviceName,
+                'description': service.description,
+                'price': service.price
+            },
+            'professionals': response
         }), 200
     else:
         return jsonify({'message': 'Service not found'}), 404
+
+# Customer Service Booking Api
+
+#Create
+@customerApi.route('/service/<int:service_id>/booking', methods=['POST'])
+@custom_jwt_required
+def serviceBooking(service_id):
+    user = request.user
+    founduser = Customer.query.filter_by(username = user).first()
+    if founduser:
+        data = request.get_json()
+        service = Services.query.filter_by(id = service_id).first()
+        if service:
+            booking = ServiceRequest(
+                customerId = founduser.id,
+                serviceId = service_id,
+                professionalId = data['professionalId'],
+                requestDate = datetime.strptime(data['serviceDate'], "%Y-%m-%d").date()
+            )
+            db.session.add(booking)
+            db.session.commit()
+            return jsonify({'message': 'Booking created successfully'}), 201
+        else:
+            return jsonify({'message': 'Service not found'}), 404
+    else:
+        return jsonify({'message': 'User not found'}), 404
+    
+#Update
+@customerApi.route('/service/booking/<int:booking_id>/complete', methods=['PUT'])
+@custom_jwt_required
+def updateServiceBooking(booking_id):
+    user = request.user
+    founduser = Customer.query.filter_by(username = user).first()
+    if founduser:
+        data = request.get_json()
+        booking = ServiceRequest.query.filter_by(id = booking_id).first()
+        if booking:
+            booking.completionDate = datetime.strptime(data['completionDate'], "%Y-%m-%d").date()
+            booking.customerStatus = 'completed'
+            db.session.commit()
+            return jsonify({'message': 'Booking updated successfully'}), 200
+        else:
+            return jsonify({'message': 'Booking not found'}), 404
+    else:
+        return jsonify({'message': 'User not found'}), 404
