@@ -1,3 +1,73 @@
+<script setup>
+import { ref, onMounted } from 'vue';
+import axios from 'axios';
+
+const token = localStorage.getItem('token');
+const newRequests = ref([]);
+const ongoingRequests = ref([]);
+
+const fetchbookings = async () => {
+    try {
+        const response = await axios.get('http://127.0.0.1:5000/professional/service/requests', {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        
+        })
+        newRequests.value = response.data.newRequests;
+        ongoingRequests.value = response.data.ongoingRequests;
+    }
+    catch (error) {
+        console.error('Error occurred:', error.response ? error.response.data : error.message);
+    }
+}
+
+onMounted(() => {
+    fetchbookings();
+})
+
+const newRequestResponse = async (requestId, status) => {
+    try {
+        await axios.put(
+            `http://127.0.0.1:5000/professional/service/request/${requestId}`,
+            { professionalStatus: status },
+            {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        )
+        fetchbookings();
+    } catch (error) {
+        console.error('Error occurred:', error.response ? error.response.data : error.message);
+    }
+}
+
+const markComplete = async (requestId) => {
+    const completionDate = new Date().toISOString().slice(0, 10);
+    try {
+        await axios.put(
+            `http://127.0.0.1:5000/professional/service/request/${requestId}/complete`,
+            { completionDate: completionDate },
+            {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        )
+        fetchbookings();
+    }
+    catch (error) {
+        console.error('Error occurred:', error.response ? error.response.data : error.message);
+    }
+}
+
+</script>
+
+
 <template>
     <div>
         <div class="grid">
@@ -8,7 +78,8 @@
                 <tr class="headrow">
                     <th>S.No</th>
                     <th>Customer</th>
-                    <th style="width: 40%;">Address</th>
+                    <th>Contact</th>
+                    <th style="width: 30%;">Address</th>
                     <th>Pincode</th>
                     <th>Date Of Request</th>
                     <th>Action</th>
@@ -17,17 +88,18 @@
                 </thead>
 
                 <tbody>
-                <tr>
-                    <td>1</td>
-                    <td>2</td>
-                    <td>3</td>
-                    <td>4</td>
-                    <td>5</td>
-                    <td><div class="option">
-                        <button class="acceptBtn">Accept</button>
-                        <button class="rejectBtn">Reject</button>
+                <tr v-for="(request, index) in newRequests" :key="request.id">
+                    <td>{{ index + 1 }}</td>
+                    <td>{{ request.customerName }}</td>
+                    <td>{{ request.customerContact }}</td>
+                    <td>{{ request.customerAddress }}</td>
+                    <td>{{ request.customerPincode }}</td>
+                    <td>{{ new Date(request.requestDate).toISOString().slice(0, 10) }}</td>
+                    <td v-if="request.professionalStatus == 'pending'"><div class="option">
+                        <button class="acceptBtn" @click="newRequestResponse(request.id, 'accepted')">Accept</button>
+                        <button class="rejectBtn" @click="newRequestResponse(request.id , 'rejected')">Reject</button>
                     </div></td>
-                    
+                    <td v-else><p v-html="request.professionalStatus=='accepted'?'Accepted':'Rejected'"></p></td>
                 </tr>
                 </tbody>
             </table>
@@ -39,23 +111,27 @@
                 <tr class="headrow">
                     <th>S.No</th>
                     <th>Customer</th>
-                    <th style="width: 40%;">Address</th>
+                    <th>Contact</th>
+                    <th style="width: 30%;">Address</th>
                     <th>Pincode</th>
                     <th>Date Of Request</th>
-                    <th>Status</th>
+                    <th>Customer Status</th>
+                    <th>Action</th>
                 </tr>
                 </thead>
 
                 <tbody>
-                <tr>
-                    <td>1</td>
-                    <td>2</td>
-                    <td>3</td>
-                    <td>4</td>
-                    <td>5</td>
+                <tr v-for="(request, index) in ongoingRequests" :key="request.id">
+                    <td>{{ index + 1 }}</td>
+                    <td>{{ request.customerName }}</td>
+                    <td>{{ request.customerContact }}</td>
+                    <td>{{ request.customerAddress }}</td>
+                    <td>{{ request.customerPincode }}</td>
+                    <td>{{ new Date(request.requestDate).toISOString().slice(0, 10) }}</td>
+                    <td>{{ request.customerStatus }}</td>
+                    
                     <td><div class="option">
-                        <button class="closeBtn">Mark Complete</button>
-                        <p class="completed">Completed</p>
+                        <button class="closeBtn" @click="markComplete(request.id)">Mark Complete</button>
                     </div></td>
                 </tr>
                 </tbody>
@@ -136,16 +212,21 @@ tr{
     align-items: center;
 }
 
-button{
+.acceptBtn,rejectBtn{
+    background-color: #6A94FF;
     border: none;
-    border-radius: .2rem;
-    width: 4rem;
-    color: white;
-    cursor: pointer;
+    color: #f5f5dc;
+    padding: 8px 16px;
+    text-align: center;
 }
 
 .closeBtn{
 background-color: #6A94FF;
+border: none;
+color: #f5f5dc;
+padding: 5px;
+border-radius: 5px;
+text-align: center;
 }
 
 .completed{

@@ -3,51 +3,67 @@ import Search from '@/assets/svg/Search.svg?raw';
 import Home from '@/assets/svg/Home.svg?raw';
 import Description from '@/assets/svg/Description.svg?raw';
 import Review from '@/assets/svg/Review.svg?raw';
+import BookingModal from './BookingModal.vue';
 
 import { onMounted, ref } from 'vue';
 import axios from 'axios';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 const route = useRoute();
+const router = useRouter();
 const serviceId = route.params.serviceId;
 const token = localStorage.getItem('token');
-console.log(serviceId);
 
 const serviceData = ref({});
+const professionalData = ref([]);
+const showModal = ref(false);
 
 onMounted(async () => {
     try {
         const response = await axios.get(`http://127.0.0.1:5000/customer/service/${serviceId}`, {
             headers: {
-                'Authorization': token ? `Bearer ${token}` : ''
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
             }
         });
-        serviceData.value = response.data;
-        console.log(response.data);
+        serviceData.value = response.data.service;
+        professionalData.value = response.data.professionals;
     } catch (error) {
         console.log('Error fetching service data:', error);
     }
 });
+
+// booking modal with professional details
+const info = ref({});
+
+const booking = (professionalId) => {
+    info.value = {
+        serviceId: serviceId,
+        professionalId: professionalId,
+    };
+    showModal.value = true;    
+};
 </script>
-
-
 
 <template>
     <div>
-        <div class="homeButton" v-html="Home" @click="$router.push({ name: 'customer' })"></div>
-        <p class="heading">{{ serviceData.name }}</p>
+        <div class="homeButton" v-html="Home" @click="router.push({ name: 'customer' })"></div>
+        <p class="heading">{{ serviceData.service_name }}</p>
 
         <div class="pincodeSearch">
             <p>Pincode:</p>
             <input type="text" />
             <div class="searchBtn" v-html="Search"></div>
         </div>
+        
         <div class="table">
             <table class="serviceTable">
                 <thead>
                     <tr class="headrow">
                         <th>S.No</th>
-                        <th>Professinal Name</th>
+                        <th>Professional Name</th>
+                        <th>Experience</th>
+                        <th>Email</th>
                         <th>Contact</th>
                         <th>Pincode</th>
                         <th>Rating</th>
@@ -59,30 +75,49 @@ onMounted(async () => {
                 </thead>
 
                 <tbody>
-                    <tr>
-                        <td>1</td>
-                        <td>Rossevelt kumar</td>
-                        <td>+91000000000</td>
-                        <td>110082</td>
-                        <td>4</td>
-                        <td>₹10000</td>
-                        <td><button class="bookingBtn" type="submit">Book</button></td>
+                    <tr v-for="(professional, index) in professionalData" :key="professional.professional_id">
+                        <td>{{ index + 1 }}</td>
+                        <td>{{ professional.professional_name }}</td>
+                        <td>{{ professional.professional_experience }} years</td> 
+                        <td>{{ professional.professional_email }}</td>
+                        <td>{{ professional.professional_contact }}</td>
+                        <td>{{ professional.professional_pincode }}</td>
+                        <td v-if="professional.professional_rating > 0 ">{{ professional.professional_rating }}</td>
+                        <td v-else>Not Rated</td>
+                        <td>₹{{ serviceData.price }}</td>
+                        <td><button class="bookingBtn" type="button" @click="booking(professional.professional_id)">Book</button></td>
                         <td>
-                            <div class="svg" ><p v-html="Description"></p></div>
+                            <div class="svg"><p v-html="Description"></p></div>
                             <span class="description">Description</span>
                         </td>
                         <td>
-                            <div class="svg" ><p v-html="Review"></p></div>
+                            <div class="svg"><p v-html="Review"></p></div>
                             <span class="review">Reviews</span>
                         </td>
                     </tr>
                 </tbody>
             </table>
         </div>
+
+        <!-- Booking Modal -->
+        <BookingModal  
+            v-if="showModal" 
+            :showModal="showModal"
+            :scheduleInfo="info"
+            @close="showModal = false" 
+            class="bookingModal"
+        />
     </div>
 </template>
 
 <style scoped>
+.bookingModal {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
 .homeButton {
     position: absolute;
     top: 1.3rem;
@@ -157,7 +192,8 @@ onMounted(async () => {
     margin-top: 1rem;
     padding: 2rem;
     border-radius: 1rem;
-    overflow: hidden;
+    overflow: auto;
+    scrollbar-width: thin;
     box-shadow: 6px 8px 25px rgba(0, 0, 0, 0.8);
 }
 
