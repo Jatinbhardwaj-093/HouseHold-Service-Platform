@@ -59,5 +59,19 @@ class ServiceRequest(db.Model):
     completionDate= db.Column(db.Date)
     customerStatus = db.Column(db.String, default='requested')
     professionalStatus = db.Column(db.String, default='pending')
+    reviewed = db.Column(db.String, default='no')
     
     service = db.relationship('Services', backref='serviceRequest', lazy=True)
+
+class ServiceReview(db.Model):
+    __tablename__ = 'ServiceReview'
+    id = db.Column(db.Integer, primary_key=True, autoincrement = True)
+    ServiceRequestId = db.Column(db.Integer, db.ForeignKey('serviceRequest.id'))
+    serviceId = db.Column(db.Integer, db.ForeignKey('Services.id'))
+    customerId = db.Column(db.Integer, db.ForeignKey('Customer.id'))
+    professionalId = db.Column(db.Integer, db.ForeignKey('Professional.id'))
+    rating = db.Column(db.Integer, nullable=False)
+    review = db.Column(db.String, nullable=False)
+    
+    customer = db.relationship('Customer', backref='serviceReview', lazy=True)
+    professional = db.relationship('Professional', backref='serviceReview', lazy=True)
