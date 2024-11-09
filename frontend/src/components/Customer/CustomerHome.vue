@@ -1,26 +1,64 @@
 <script setup>
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, reactive } from 'vue';
 import axios from 'axios';
-import Review from '@/assets/svg/Review.svg?raw'
+import Review from '@/assets/svg/Review.svg?raw';
+import ReviewModal from './ReviewModal.vue';
+import BookingModal from './BookingModal.vue';
+import MenuDot from '@/assets/svg/MenuDot.svg?raw';
 
 const token = localStorage.getItem('token');
 const bookings = ref([]);
 
-// fetchBookings
+// Fetch bookings
 const fetchBookings = async () => {
     try {
-        const response = await axios.get('http://127.0.0.1:5000/customer/', {
+        const response = await axios.get('http://127.0.0.1:5000/customer/service/bookings', {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'  
             }
-        })
-        bookings.value = response.data.service_bookings;
-    }
-    catch (error) {
+        });
+        bookings.value = response.data;
+        // Initialize showMenu for each booking to false (closed menu by default)
+        bookings.value.forEach(booking => {
+            showMenu[booking.id] = false;  // Initialize menu state per booking
+        });
+    } catch (error) {
         console.error('Error occurred:', error.response ? error.response.data : error.message);
     }
-}
+};
+
+onMounted(() => {
+    fetchBookings();
+});
+
+// Reschedule Service Request
+const reschedule = ref(false);
+const info = ref({});
+
+const rescheduleBooking = (bookingId) => {
+    reschedule.value = true;
+    info.value = {
+        bookingId: bookingId,
+        action: 'updateBooking'
+    }
+};
+
+const closeRescheduleModal = () => {
+    reschedule.value = false;
+    fetchBookings();
+};
+
+// Cancel Service Request
+const cancelBooking = async (bookingId) => {
+    await axios.delete(`http://127.0.0.1:5000/customer/service/booking/${bookingId}/delete`, {
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        }
+    });
+    fetchBookings();
+};
 
 // Marking service completed
 const closeBooking = async (bookingId) => {
@@ -40,69 +78,141 @@ const closeBooking = async (bookingId) => {
     } catch (error) {
         console.error('Error occurred:', error.response ? error.response.data : error.message);
     }
-}
+};
 
-onMounted(() => {
+// Review Modal
+const openModal = (bookingId, action) => {
+    showModal.value = true;
+    booking_id.value = bookingId;
+    Action.value = action;
+};
+
+const closeModal = () => {
+    showModal.value = false;
+    booking_id.value = null;
+    Action.value = '';
     fetchBookings();
-})
-</script>
+};
 
+const showModal = ref(false);
+const booking_id = ref(null);
+const Action = ref('');
+
+// Menu to Edit, Delete or Review Request
+const showMenu = reactive({}); // Using `reactive` to track changes to the object
+
+const toggleMenu = (bookingId) => {
+    showMenu[bookingId] = !showMenu[bookingId]; // Toggle specific booking's menu
+};
+
+const handleOptionClick = (bookingId, option) => {
+    console.log(`Option selected: ${option}`);
+    if (option === 'editReview') {
+        openModal(bookingId, option);
+    } else if (option === 'deleteReview') {
+        deleteReview(bookingId);
+    } else if (option === 'edit') {
+        rescheduleBooking(bookingId);
+    } else if (option === 'delete') {
+        cancelBooking(bookingId);
+    }
+
+    // Close the menu after selection
+    showMenu[bookingId] = false;
+};
+
+// Delete Review
+const deleteReview = async (bookingId) => {
+    try {
+        await axios.delete(`http://127.0.0.1:5000/customer/service/${bookingId}/review/delete`, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        alert('Review deleted successfully');
+        fetchBookings();
+    } catch (err) {
+        console.error(err.response ? err.response.data : err.message);
+    }
+};
+</script>
 
 <template>
     <div>
         <div class="bookingContainer">
-        <h1>BOOKING</h1>
-        <table>
-            <thead>
-            <tr class="headrow">
-                <th>S.No</th>
-                <th>Service</th>
-                <th>Professional</th>
-                <th>Date of Request</th>
-                <th>Date of Completion</th>
-                <th>Request Status</th>
-                <th>Service Status</th>
-                <th>Action</th>
-                <th></th>
-            </tr>
-            </thead>
+            <h1>BOOKING</h1>
+            <table>
+                <thead>
+                    <tr class="headrow">
+                        <th>S.No</th>
+                        <th>Service</th>
+                        <th>Professional</th>
+                        <th>Date of Request</th>
+                        <th>Date of Completion</th>
+                        <th>Request Status</th>
+                        <th>Service Status</th>
+                        <th>Action</th>
+                        <th></th>
+                        <th></th>
+                    </tr>
+                </thead>
 
-            <tbody>
-            <tr v-for="(booking, index) in bookings" :key="booking.id">
-                <td>{{ index + 1 }}</td>
-                <td>{{ booking.serviceName }}</td>
-                <td>{{ booking.professionalName }}</td>
-                <td>{{ new Date(booking.requestDate).toISOString().slice(0, 10) }}</td>
-                
-                <!-- booking.completionDate -->
-                <td v-if="booking.completionDate">{{ new Date(booking.completionDate).toISOString().slice(0, 10) }}</td>
-                <td v-else>Pending</td>
-                
-                <!-- booking request status -->
-                <td v-if="booking.professionalStatus=='accepted'||booking.professionalStatus=='completed'">Accepted</td>
-                <td v-else>Pending</td>
+                <tbody>
+                    <tr v-for="(booking, index) in bookings" :key="booking.id">
+                        <td>{{ index + 1 }}</td>
+                        <td>{{ booking.serviceName }}</td>
+                        <td>{{ booking.professionalName }}</td>
+                        <td>{{ new Date(booking.requestDate).toISOString().slice(0, 10) }}</td>
+                        <td v-if="booking.completionDate">{{ new Date(booking.completionDate).toISOString().slice(0, 10) }}</td>
+                        <td v-else>Pending</td>
+                        <td v-if="booking.professionalStatus=='accepted' || booking.professionalStatus=='completed'">Accepted</td>
+                        <td v-else>Pending</td>
+                        <td v-if="booking.completionDate">Completed</td>
+                        <td v-else>Pending</td>
 
-                <!-- booking service status -->
-                <td v-if="booking.completionDate">Completed</td>
-                <td v-else>Pending</td>
+                        <!-- action button to mark service as completed -->
+                        <td v-if="(booking.professionalStatus=='accepted' || booking.professionalStatus=='completed') 
+                            && !booking.customerStatus=='completed' ">
+                            <button class="closeBtn" @click="closeBooking(booking.id)" type="submit">Close</button>
+                        </td>
+                        <td v-else-if="booking.customerStatus=='completed'">Completed</td>
+                        <td v-else></td>
 
-                <!-- action button to mark service as completed -->
-                <td v-if="(booking.professionalStatus=='accepted' || booking.professionalStatus=='completed') 
-                    && !booking.customerStatus=='completed' ">
-                    <button class="closeBtn" @click="closeBooking(booking.id)" type="submit">Close</button></td>
-                <td v-else>Completed</td>
+                        <!-- review button -->
+                        <td v-if="booking.customerStatus=='completed' && booking.reviewed=='no'">
+                            <p @click="openModal(booking.id,'createReview')" class="review" v-html="Review"></p>
+                        </td>
+                        <td v-else></td>
 
-                <!-- review button -->
-                <td v-if="booking.customerStatus=='completed'"><p class="review" v-html="Review"></p></td>
-                <td v-else></td>
-            </tr>
-            </tbody>
-        </table>
-    </div>
+                        <!-- Menu Button -->
+                        <td>
+                            <p v-html="MenuDot" @click="toggleMenu(booking.id)" class="menu"></p>
+                            <div v-if="showMenu[booking.id]" class="dropdown-menu">
+                                <p v-if="booking.completionDate==null" @click="handleOptionClick(booking.id,'edit')">Edit</p>
+                                <p v-if="booking.professionalStatus=='pending'" @click="handleOptionClick(booking.id,'delete')">Delete</p>
+                                <p v-if="booking.reviewed=='yes'" @click="handleOptionClick(booking.id,'editReview')">Edit Review</p>
+                                <p v-if="booking.reviewed=='yes'" @click="handleOptionClick(booking.id,'deleteReview')">Delete Review</p>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <ReviewModal v-if="showModal" :bookingId="booking_id" :action="Action" @closeModal="closeModal" />
+        <BookingModal v-if="reschedule" :scheduleInfo="info" @close="closeRescheduleModal" class="rescheduleBookingModal"/>
     </div>
 </template>
 
 <style scoped>
+
+.rescheduleBookingModal {
+    /* position: absolute; */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
 .bookingContainer{
     width: 95%;
     background-color: rgba(255, 255, 255, 0.06);
@@ -181,6 +291,37 @@ tr:last-child{
 .review{
     width: 25px;
     height: 25px;
+}
+
+.menu{
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+    background-color: #242424;
+    padding: 5px;
+    border-radius: 5px;
+}
+
+.dropdown-menu {
+    position: absolute;
+    background-color: rgb(18, 17, 17);
+    border: 1px solid #ddd;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+    margin-top: 5px;
+    z-index: 10;
+    width: 80px;
+}
+
+.dropdown-menu p {
+    margin: 0;
+    padding: 5px;
+    cursor: pointer;
+    color: white;
+}
+
+.dropdown-menu p:hover {
+    background-color: #383535;
 }
 
 </style>
