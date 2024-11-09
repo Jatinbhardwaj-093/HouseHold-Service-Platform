@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from models import Customer, Services, ServiceImg,ServiceRequest,Professional, db 
+from models import Customer, Services, ServiceImg,ServiceRequest,Professional,ServiceReview, db 
 from . import bcrypt,custom_jwt_required
 from datetime import datetime
 
@@ -42,26 +42,9 @@ def home():
             'pincode': founduser.pincode,
             'address': founduser.Address
         }
-        
-        # customer service bookings
-        bookings = ServiceRequest.query.filter_by(customerId = founduser.id).all()
-        service_bookings = []
-        for booking in bookings:
-            foundProfessional = Professional.query.filter_by(id = booking.professionalId).first()
-            service_bookings.append({
-                'id': booking.id,
-                'serviceName': booking.service.serviceName,
-                'professionalName': foundProfessional.username,
-                'requestDate': booking.requestDate,
-                'completionDate': booking.completionDate,
-                'customerStatus': booking.customerStatus,
-                'professionalStatus': booking.professionalStatus
-            })
-
         # response data
         response = {
             'customer': customer,
-            'service_bookings': service_bookings
         }
         
         return jsonify(response), 200
@@ -185,8 +168,33 @@ def serviceBooking(service_id):
             return jsonify({'message': 'Service not found'}), 404
     else:
         return jsonify({'message': 'User not found'}), 404
-    
-#Update
+
+#Read
+@customerApi.route('/service/bookings', methods=['GET'])
+@custom_jwt_required
+def serviceBookings():
+    user = request.user
+    founduser = Customer.query.filter_by(username = user).first()
+    if founduser:
+        bookings = ServiceRequest.query.filter_by(customerId = founduser.id).all()
+        response = []
+        for booking in bookings:
+            foundProfessional = Professional.query.filter_by(id = booking.professionalId).first()
+            response.append({
+                'id': booking.id,
+                'serviceName': booking.service.serviceName,
+                'professionalName': foundProfessional.username,
+                'requestDate': booking.requestDate,
+                'completionDate': booking.completionDate,
+                'customerStatus': booking.customerStatus,
+                'professionalStatus': booking.professionalStatus,
+                'reviewed': booking.reviewed
+            })
+        return jsonify(response), 200
+    else:
+        return jsonify({'message': 'User not found'}), 404
+
+#Update (Marking Complete)
 @customerApi.route('/service/booking/<int:booking_id>/complete', methods=['PUT'])
 @custom_jwt_required
 def updateServiceBooking(booking_id):
@@ -202,5 +210,111 @@ def updateServiceBooking(booking_id):
             return jsonify({'message': 'Booking updated successfully'}), 200
         else:
             return jsonify({'message': 'Booking not found'}), 404
+    else:
+        return jsonify({'message': 'User not found'}), 404
+    
+#Update (Rescheduling)
+@customerApi.route('/service/booking/<int:booking_id>/reschedule', methods=['PUT'])
+@custom_jwt_required
+def rescheduleServiceBooking(booking_id):
+    user = request.user
+    founduser = Customer.query.filter_by(username = user).first()
+    if founduser:
+        data = request.get_json()
+        booking = ServiceRequest.query.filter_by(id = booking_id).first()
+        if booking:
+            booking.requestDate = datetime.strptime(data['serviceDate'], "%Y-%m-%d").date()
+            db.session.commit()
+            return jsonify({'message': 'Booking rescheduled successfully'}), 200
+        else:
+            return jsonify({'message': 'Booking not found'}), 404
+    else:
+        return jsonify({'message': 'User not found'}), 404
+    
+#Delete
+@customerApi.route('/service/booking/<int:booking_id>/delete', methods=['DELETE'])
+@custom_jwt_required
+def deleteServiceBooking(booking_id):
+    user = request.user
+    founduser = Customer.query.filter_by(username = user).first()
+    if founduser:
+        booking = ServiceRequest.query.filter_by(id = booking_id).first()
+        if booking:
+            db.session.delete(booking)
+            db.session.commit()
+            return jsonify({'message': 'Booking deleted successfully'}), 200
+        else:
+            return jsonify({'message': 'Booking not found'}), 404
+    else:
+        return jsonify({'message': 'User not found'}), 404
+    
+
+#Customer Service Review Api
+
+#Create
+@customerApi.route('/service/<int:booking_id>/review/create', methods=['POST'])
+@custom_jwt_required
+def serviceReview(booking_id):
+    user = request.user
+    founduser = Customer.query.filter_by(username = user).first()
+    if founduser:
+        data = request.get_json()
+        booking = ServiceRequest.query.filter_by(id = booking_id).first()
+        if booking:
+            review = ServiceReview(
+                ServiceRequestId = booking_id,
+                serviceId = booking.serviceId,
+                customerId = founduser.id,
+                professionalId = booking.professionalId,
+                rating = data['rating'],
+                review = data['review']
+            )
+            
+            updateReviewStatus = ServiceRequest.query.filter_by(id = booking_id).first()
+            updateReviewStatus.reviewed = 'yes'
+            
+            db.session.add(review)
+            db.session.commit()
+            return jsonify({'message': 'Review created successfully'}), 201
+        else:
+            return jsonify({'message': 'Booking not found'}), 404
+    else:
+        return jsonify({'message': 'User not found'}), 404
+            
+#Update
+@customerApi.route('/service/<int:booking_id>/review/update', methods=['PUT'])
+@custom_jwt_required
+def updateServiceReview(booking_id):
+    user = request.user
+    founduser = Customer.query.filter_by(username = user).first()
+    if founduser:
+        data = request.get_json()
+        review = ServiceReview.query.filter_by(ServiceRequestId = booking_id).first()
+        if review:
+            review.rating = data['rating']
+            review.review = data['review']
+            db.session.commit()
+            return jsonify({'message': 'Review updated successfully'}), 200
+        else:
+            return jsonify({'message': 'Review not found'}), 404
+    else:
+        return jsonify({'message': 'User not found'}), 404
+    
+#Delete
+@customerApi.route('/service/<int:booking_id>/review/delete', methods=['DELETE'])
+@custom_jwt_required
+def deleteServiceReview(booking_id):
+    user = request.user
+    founduser = Customer.query.filter_by(username = user).first()
+    if founduser:
+        review = ServiceReview.query.filter_by(ServiceRequestId = booking_id).first()
+        service_request = ServiceRequest.query.filter_by(id = booking_id).first()
+        if review:
+            db.session.delete(review)
+            service_request.reviewed = 'no'
+            db.session.commit()
+            return jsonify({'message': 'Review deleted successfully'}), 200
+        else:
+            return jsonify({'message': 'Review not found'}), 404
     else:
         return jsonify({'message': 'User not found'}), 404
