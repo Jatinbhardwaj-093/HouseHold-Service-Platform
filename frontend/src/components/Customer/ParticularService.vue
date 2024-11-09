@@ -40,6 +40,7 @@ const booking = (professionalId) => {
     info.value = {
         serviceId: serviceId,
         professionalId: professionalId,
+        action: 'createBooking'
     };
     showModal.value = true;    
 };
@@ -102,7 +103,6 @@ const booking = (professionalId) => {
         <!-- Booking Modal -->
         <BookingModal  
             v-if="showModal" 
-            :showModal="showModal"
             :scheduleInfo="info"
             @close="showModal = false" 
             class="bookingModal"
