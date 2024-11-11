@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from models import Professional, db ,Services,ServiceRequest, ServiceImg,Customer
+from models import Professional, db ,Services,ServiceRequest, ServiceImg, ServiceReview, Customer
 import jwt
 from flask_bcrypt import Bcrypt
 from . import bcrypt,custom_jwt_required
@@ -195,3 +195,39 @@ def updateServiceCompletion(booking_id):
             return jsonify({'message': 'Booking not found'}), 404
     else:
         return jsonify({'message': 'User not found'}), 404
+    
+    
+#Professional Service Request History Api
+
+#Read
+@professionalApi.route('/service/requests/history', methods=['GET'])
+@custom_jwt_required
+def serviceRequestHistory():
+    user = request.user
+    founduser = Professional.query.filter_by(username = user).first()
+    if founduser:
+        requests = ServiceRequest.query.filter_by(professionalId = founduser.id).all()
+        response = []
+        for serviceRequest in requests:
+            foundCustomer = Customer.query.filter_by(id = serviceRequest.customerId).first()
+            foundReview = ServiceReview.query.filter_by(ServiceRequestId = serviceRequest.id).first()
+            data = {
+                'id': serviceRequest.id,
+                'customerId': serviceRequest.customerId,
+                'customerName': foundCustomer.username,
+                'customerAddress': foundCustomer.Address,
+                'customerContact': foundCustomer.contact,
+                'customerPincode': foundCustomer.pincode,
+                'requestDate': serviceRequest.requestDate,
+                'completionDate': serviceRequest.completionDate,
+                'customerStatus': serviceRequest.customerStatus,
+                'professionalStatus': serviceRequest.professionalStatus,
+                'reviewed': serviceRequest.reviewed,
+                'rating': foundReview.rating if foundReview else None,
+                'review': foundReview.review if foundReview else None
+            }
+            response.append(data)
+        return jsonify(response), 200
+    else:
+        return jsonify({'message': 'User not found'}), 404
+    
