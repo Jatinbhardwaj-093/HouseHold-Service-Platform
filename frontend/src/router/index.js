@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import WebsiteHome from '@/views/WebsiteHomeView.vue';
 import LoginView from '@/views/LoginView.vue';
 import SignUpView from '@/views/SignUpView.vue';
 import CustomerSignUpView from '@/views/CustomerSignUpView.vue';
@@ -11,12 +12,18 @@ import Admin_CustomerDetailView from '@/views/Admin_CustomerDetailView.vue';
 import Admin_OngoinServiceView from '@/views/Admin_OngoinServiceView.vue';
 import ProffesionalSignUp from '@/views/ProffesionalSignUp.vue';
 import ProffesionalHomeView from '@/views/Professional_HomeView.vue';
+import ProfessionalHistory from '@/views/Professional_HistoryView.vue';
 
 
 const routes = [
   {
     path: '/',
-    name: 'login',
+    name: 'home',
+    component: WebsiteHome
+  },
+  {
+    path: '/login',
+    name: 'login', 
     component: LoginView
   },
   {
@@ -81,6 +88,12 @@ const routes = [
     path: '/proffessional/signup',
     name: 'proffessional-signup',
     component: ProffesionalSignUp,
+  },
+  {
+    path: '/proffessional/history',
+    name: 'professional-history',
+    component: ProfessionalHistory,
+    meta: { requiresAuth: true, role: 'professional' }
   }
 ];
 
