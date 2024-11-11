@@ -143,6 +143,25 @@ def service(service_id):
     else:
         return jsonify({'message': 'Service not found'}), 404
 
+# Customer Particular Professional Review Api
+
+#Read
+@customerApi.route('/professional/<int:professional_id>/reviews', methods=['GET'])
+@custom_jwt_required
+def professionalReviews(professional_id):
+    reviews = ServiceReview.query.filter_by(professionalId = professional_id).all()
+    response = []
+    for review in reviews:
+        customer = Customer.query.filter_by(id = review.customerId).first()
+        response.append({
+            'id': review.id,
+            'customerName' : customer.username,
+            'rating': review.rating,
+            'review': review.review
+        })
+    return jsonify(response), 200
+
+
 # Customer Service Booking Api
 
 #Create
@@ -280,7 +299,7 @@ def serviceReview(booking_id):
             return jsonify({'message': 'Booking not found'}), 404
     else:
         return jsonify({'message': 'User not found'}), 404
-            
+
 #Update
 @customerApi.route('/service/<int:booking_id>/review/update', methods=['PUT'])
 @custom_jwt_required
