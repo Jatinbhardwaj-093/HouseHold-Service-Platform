@@ -1,120 +1,185 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, computed } from 'vue'
+import axios from 'axios'
+import Search from '@/assets/svg/Search.svg?raw'
 
-// Create a reference to track the details elements
 const detailsRef = ref([])
 
-// Use onMounted to set up the click listener when the component is mounted
+// Listen for clicks outside of details elements to close them
 onMounted(() => {
     document.addEventListener('click', (event) => {
         detailsRef.value.forEach((detail) => {
             if (!detail.contains(event.target)) {
-                detail.removeAttribute('open') // Close the <details> element
+                detail.removeAttribute('open')
             }
         })
     })
 })
+
+// Token for authorization
+const token = localStorage.getItem('token')
+
+// Fetch professionals data
+const professional = ref([])
+const fetchProfessional = async () => {
+    try {
+        const response = await axios.get(`http://127.0.0.1:5000/admin/professional`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+        professional.value = response.data;
+    } catch (error) {
+        console.error('Failed to fetch professional:', error);
+    }
+}
+
+// Search functionality
+const searchTerm = ref('') // Reactive variable for search input
+const filteredProfessionals = computed(() => {
+    if (!searchTerm.value) return professional.value
+    return professional.value.filter(p => 
+        p.username.toLowerCase().includes(searchTerm.value.toLowerCase())
+    )
+})
+
+onMounted(() => {
+    fetchProfessional()
+})
+
+// Flag, verify, and delete operations for professionals
+const flagProfessional = async (professional_id) => {
+    try {
+        await axios.put(`http://127.0.0.1:5000/admin/professional/${professional_id}/flag`, {}, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+        fetchProfessional()
+    } catch (error) {
+        console.error('Failed to flag professional:', error);
+    }
+}
+
+const verifyProfessional = async (professional_id) => {
+    try {
+        await axios.put(`http://127.0.0.1:5000/admin/professional/${professional_id}/verify`, {}, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+        fetchProfessional()
+    } catch (error) {
+        console.error('Failed to verify professional:', error);
+    }
+}
+
+const deleteProfessional = async (professional_id) => {
+    try {
+        await axios.delete(`http://127.0.0.1:5000/admin/professional/${professional_id}/delete`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+        fetchProfessional()
+    } catch (error) {
+        console.error('Failed to delete professional:', error);
+    }
+}
 </script>
 
 <template>
     <div>
         <div class="container">
             <div class="searchBar">
-                <input type="text" class="search" placeholder="Service Name" />
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
-                    <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
-                    <g id="SVGRepo_iconCarrier">
-                        <path
-                            d="M11 6C13.7614 6 16 8.23858 16 11M16.6588 16.6549L21 21M19 11C19 15.4183 15.4183 19 11 19C6.58172 19 3 15.4183 3 11C3 6.58172 6.58172 3 11 3C15.4183 3 19 6.58172 19 11Z"
-                            stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-                    </g>
-                </svg>
+                <input 
+                    type="text" 
+                    class="search" 
+                    placeholder="Search by professional name" 
+                    v-model="searchTerm" />
+                <p class="searchBtn" v-html="Search"></p>
             </div>
-            <table>
+            <table v-if="filteredProfessionals.length > 0">
                 <thead>
                     <tr class="headrow">
                         <th style="width: 1%"></th>
                         <th>S.No</th>
-                        <th>Professinal</th>
+                        <th>Professional</th>
                         <th>Service</th>
+                        <th>Email</th>
                         <th>Experience</th>
                         <th>Pincode</th>
                         <th>Rating</th>
+                        <th>Status</th>
                         <th>Verification</th>
                         <th style="width: 5%"></th>
-                        <th style="width: 2%"></th>
+                        <th style="width: 8%"></th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr>
-                        <td>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="yellow"
-                                class="bi bi-flag-fill" viewBox="0 0 16 16">
-                                <path
-                                    d="M14.778.085A.5.5 0 0 1 15 .5V8a.5.5 0 0 1-.314.464L14.5 8l.186.464-.003.001-.006.003-.023.009a12 12 0 0 1-.397.15c-.264.095-.631.223-1.047.35-.816.252-1.879.523-2.71.523-.847 0-1.548-.28-2.158-.525l-.028-.01C7.68 8.71 7.14 8.5 6.5 8.5c-.7 0-1.638.23-2.437.477A20 20 0 0 0 3 9.342V15.5a.5.5 0 0 1-1 0V.5a.5.5 0 0 1 1 0v.282c.226-.079.496-.17.79-.26C4.606.272 5.67 0 6.5 0c.84 0 1.524.277 2.121.519l.043.018C9.286.788 9.828 1 10.5 1c.7 0 1.638-.23 2.437-.477a20 20 0 0 0 1.349-.476l.019-.007.004-.002h.001" />
-                            </svg>
+                    <tr v-for="(prof, index) in filteredProfessionals" :key="prof.professionalId">
+                        <td v-if="prof.flag == 'no'"></td>
+                        <td v-else><p v-html="Flag"></p></td>
+                        <td>{{ index + 1 }}</td>
+                        <td>{{ prof.username }}</td>
+                        <td>{{ prof.serviceName }}</td>
+                        <td>{{ prof.email }}</td>
+                        <td>{{ prof.experience }} Years</td>
+                        <td>{{ prof.pincode }}</td>
+                        <td>{{ prof.rating }}</td>
+                        <td v-if="prof.verify == 'no'">Not Verified</td>
+                        <td v-else-if="prof.flag == 'yes'">Flagged</td>
+                        <td v-else>OK</td>
+                        <td v-if="prof.verify == 'no'">
+                            <button @click="verifyProfessional(prof.professionalId)">Verify</button>
                         </td>
-                        <td>1</td>
-                        <td>Jatin Slith</td>
-                        <td>Plumber</td>
-                        <td>4 Years</td>
-                        <td>110023</td>
-                        <td>5</td>
-                        <td class="verified">Verified</td>
-                        <td>
-                            <div class="option">
-                                <button class="unverifyBtn">Unverify</button>
-                            </div>
+                        <td v-else style="color: rgb(82, 149, 231); font-weight: 600">Verified</td>
+                        <td v-if="prof.verify == 'yes'">
+                            <button @click="flagProfessional(prof.professionalId)">
+                                {{ prof.flag == 'no' ? 'Flag' : 'Unflag' }}
+                            </button>
                         </td>
                         <td>
-                            <details>
-                                <summary>
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                        class="bi bi-three-dots-vertical" viewBox="0 0 16 16">
-                                        <path
-                                            d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0" />
-                                    </svg>
-                                </summary>
-                                <ul>
-                                    <li>Falg</li>
-                                    <li>Delete</li>
-                                </ul>
-                            </details>
+                            <button @click="deleteProfessional(prof.professionalId)">Delete</button>
                         </td>
                     </tr>
                 </tbody>
             </table>
+            <img class="emptyMessage" v-else src="@/assets/images/empty-box.png" alt="No professionals found">
         </div>
     </div>
 </template>
 
+
 <style scoped>
 .container {
     width: 95%;
-    height: 100vh;
+    height: 80vh;
     margin: auto;
     border-radius: 1rem;
     box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.6);
     background-color: #3c3c3c;
-    overflow-y: hidden;
-    overflow-x: scroll;
+    overflow:auto;
     scrollbar-width: thin;
 }
 
 .searchBar {
     display: flex;
-    justify-content: space-between;
+    justify-content: start;
     background-color: black;
     box-shadow: 5px 5px 10px rgb(0, 0, 0);
     border-radius: 0.5rem;
     padding: 0.5rem;
     margin: 2rem;
-    width: min(100%, 800px);
+    width: min(100%, 750px);
 }
 
 input {
-    display: inline;
+    width: 95%;
     background-color: transparent;
     border: none;
     outline: none;
@@ -122,6 +187,11 @@ input {
     font-size: 1.5rem;
     vertical-align: middle;
     padding-left: 1rem;
+}
+
+.searchBtn {
+    height: 35px;
+    width: 35px;
 }
 
 input:focus::placeholder {
@@ -176,76 +246,17 @@ button {
     width: 4rem;
     color: white;
     cursor: pointer;
-}
-
-td svg {
-    height: 20px;
-    width: 20px;
-}
-
-svg {
-    height: 30px;
-    width: 30px;
-    cursor: pointer;
-}
-
-button {
     background-color: #1e1e1e;
     color: #fe772e;
     padding: 3px;
     text-align: center;
 }
 
-details summary svg {
-    background-color: #2c2b2b;
-    padding: 2px;
-    border-radius: 2px;
-    height: 25px;
-    width: 25px;
-}
-
-details summary svg:hover {
-    outline: #832f01 2px solid;
-}
-
-details {
-    position: relative;
-}
-
-details ul {
-    position: absolute;
-    top: -100%;
-    right: 110%;
-    list-style: none;
-    width: max-content;
-    background-color: #4f4f4f;
-    color: white;
-    border-radius: 0.2rem;
-    z-index: 100;
-}
-
-details ul li {
-    text-align: start;
-    cursor: pointer;
-    padding: 2px 15px;
-}
-
-details ul li:hover {
-    background-color: #424242;
-    border-radius: 0.2rem;
-    color: white;
-}
-
-details summary {
-    list-style-type: none;
-}
-
-details[open] summary svg {
-    background-color: #832f01;
-}
-
-.bi .bi-flag-fiil {
-    color: yellow;
-    background-color: yellow;
+.emptyMessage{
+    height: 250px;
+    width: 250px;
+    display: block;
+    margin: auto;
+    margin-top: 2rem;
 }
 </style>
