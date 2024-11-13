@@ -11,13 +11,9 @@ adminApi = Blueprint('adminApi', __name__)
 
 #********************** Admin Home Api******************************
 
-@adminApi.route('/', methods=['GET', 'OPTIONS'])
-
+@adminApi.route('/', methods=['GET'])
+@custom_jwt_required
 def home():
-    print('Authorization Header:', request.headers.get('Authorization'))  # Check if JWT is received
-    if request.method == 'OPTIONS':
-        return jsonify({'message': 'CORS preflight response'}), 200
-
     try:
         services = Services.query.all()
         response = []
@@ -41,6 +37,7 @@ def home():
 
 # Create
 @adminApi.route('/service', methods=['POST'])
+@custom_jwt_required
 def create_service():
     data = request.get_json()
     
@@ -73,6 +70,7 @@ def create_service():
 
 #Read
 @adminApi.route('/service/<int:service_id>', methods=['GET'])
+@custom_jwt_required
 def read_service(service_id):
     service = Services.query.filter_by(id=service_id).first()
     
@@ -97,6 +95,7 @@ def read_service(service_id):
 
 # Update
 @adminApi.route('/service/<int:service_id>', methods=['PUT'])
+@custom_jwt_required
 def edit_service(service_id):
     service = Services.query.filter_by(id=service_id).first()
     
@@ -134,6 +133,7 @@ def edit_service(service_id):
 
 #Delete
 @adminApi.route('/service/<int:service_id>', methods=['DELETE'])
+@custom_jwt_required
 def delete_service(service_id):
     service = Services.query.get(service_id)
     
@@ -159,6 +159,7 @@ def delete_service(service_id):
 
 #Read
 @adminApi.route('/customers', methods=['GET'])
+@custom_jwt_required
 def customers():
     customers = Customer.query.all()
     response = []
@@ -176,6 +177,7 @@ def customers():
 
 #Update(Flag)
 @adminApi.route('/customer/<int:customer_id>/flag', methods=['PUT'])
+@custom_jwt_required
 def update_customer(customer_id):
     customer = Customer.query.get(customer_id)
     if not customer:
@@ -190,6 +192,7 @@ def update_customer(customer_id):
 
 #Delete
 @adminApi.route('/customer/<int:customer_id>', methods=['DELETE'])
+@custom_jwt_required
 def delete_customer(customer_id):
     customer = Customer.query.get(customer_id)
     if not customer:
