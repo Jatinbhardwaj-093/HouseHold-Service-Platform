@@ -1,11 +1,9 @@
 <script setup>
+import { ref, onMounted, computed } from 'vue'
+import axios from 'axios'
 import Search from '@/assets/svg/Search.svg?raw'
 
-import { ref,onMounted } from 'vue'
-import axios from 'axios'
-
 const token = localStorage.getItem('token')
-
 
 // Fetch customers
 const customers = ref([])
@@ -67,16 +65,27 @@ const deleteCustomer = async (customerId) => {
         console.error('Failed to delete customer:', err)
     }
 }
+
+// Search functionality
+const search = ref('')
+const filteredCustomers = computed(() => {
+    return search.value
+        ? customers.value.filter(customer => 
+            customer.username.toLowerCase().includes(search.value.toLowerCase())
+        )
+        : customers.value
+})
+
 </script>
 
 <template>
     <div>
         <div class="container">
             <div class="searchBar">
-                <input type="text" class="search" placeholder="Search by customer name" />
+                <input type="text" class="search" placeholder="Search by customer name" v-model="search" />
                 <div class="searchBtn" v-html="Search"></div>
             </div>
-            <table>
+            <table v-if="filteredCustomers.length > 0">
                 <thead>
                     <tr>
                         <th>S.No</th>
@@ -86,12 +95,12 @@ const deleteCustomer = async (customerId) => {
                         <th>Contact</th>
                         <th>Pincode</th>
                         <th>Status</th>
-                        <th>Flag</th>
-                        <th>Delete</th>
+                        <th style="width: 5%;"></th>
+                        <th style="width: 8%;"></th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-for="(customer, index) in customers" :key="customer.id">
+                    <tr v-for="(customer, index) in filteredCustomers" :key="customer.id">
                         <td>{{ index + 1 }}</td>
                         <td>{{ customer.username }}</td>
                         <td>{{ customer.address }}</td>
@@ -102,41 +111,43 @@ const deleteCustomer = async (customerId) => {
                         <td v-else>OK</td>
                         <td>
                             <button @click="flagCustomer(customer)" v-if="customer.flag == 'no' ">Flag</button>
-                            <button @click="flagCustomer(customer)" v-else>Unflag</button></td>
+                            <button @click="flagCustomer(customer)" v-else>Unflag</button>
+                        </td>
                         <td><button @click="deleteCustomer(customer.id)">Delete</button></td>
                     </tr>
                 </tbody>
             </table>
+            <img v-else class="emptyMessage" src="@/assets/images/empty-box.png" alt="No customers found">
         </div>
     </div>
 </template>
 
+
 <style scoped>
 .container {
     width: 95%;
-    height: 100vh;
+    height: 80vh;
     margin: auto;
     border-radius: 1rem;
     box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.6);
     background-color: #3c3c3c;
-    overflow-y: hidden;
-    overflow-x: scroll;
+    overflow: auto;
     scrollbar-width: thin;
 }
 
 .searchBar {
     display: flex;
-    justify-content: space-between;
+    justify-content: start;
     background-color: black;
     box-shadow: 5px 5px 10px rgb(0, 0, 0);
     border-radius: 0.5rem;
     padding: 0.5rem;
     margin: 2rem;
-    width: min(100%, 800px);
+    width: min(100%, 750px);
 }
 
 input {
-    display: inline;
+    width: 95%;
     background-color: transparent;
     border: none;
     outline: none;
@@ -192,14 +203,6 @@ tr {
     align-items: center;
 }
 
-button {
-    border: none;
-    border-radius: 0.2rem;
-    width: 4rem;
-    color: white;
-    cursor: pointer;
-}
-
 .searchBtn {
     height: 30px;
     width: 30px;
@@ -211,5 +214,16 @@ button {
     color: #fe772e;
     padding: 3px;
     text-align: center;
+    border: none;
+    border-radius: 0.2rem;
+    width: 4rem;
+}
+
+.emptyMessage{
+    height: 250px;
+    width: 250px;
+    display: block;
+    margin: auto;
+    margin-top: 2rem;
 }
 </style>
