@@ -73,7 +73,7 @@ const markComplete = async (requestId) => {
         <div class="grid">
         <div class="table1">
             <h1>New Requests</h1>
-            <table>
+            <table v-if="newRequests.length > 0">
                 <thead>
                 <tr class="headrow">
                     <th>S.No</th>
@@ -103,10 +103,11 @@ const markComplete = async (requestId) => {
                 </tr>
                 </tbody>
             </table>
+            <img v-else class="emptyMessage" src="@/assets/images/empty-box.png" alt="No Data">
         </div>
         <div class="table2">
             <h1>Ongoing Requests</h1>
-            <table>
+            <table v-if="ongoingRequests.length > 0">
                 <thead>
                 <tr class="headrow">
                     <th>S.No</th>
@@ -135,7 +136,8 @@ const markComplete = async (requestId) => {
                     </div></td>
                 </tr>
                 </tbody>
-            </table>    
+            </table> 
+            <img v-else class="emptyMessage" src="@/assets/images/empty-box.png" alt="No Data">
         </div>
     </div>
     </div>
@@ -212,14 +214,6 @@ tr{
     align-items: center;
 }
 
-.acceptBtn,rejectBtn{
-    background-color: #6A94FF;
-    border: none;
-    color: #f5f5dc;
-    padding: 8px 16px;
-    text-align: center;
-}
-
 .closeBtn{
 background-color: #6A94FF;
 border: none;
@@ -229,7 +223,26 @@ border-radius: 5px;
 text-align: center;
 }
 
-.completed{
-    color: #3fe33c;
+button {
+    border: none;
+    border-radius: 0.25rem;
+    width: 5rem;
+    font-size: 1rem;
+    cursor: pointer;
+    background-color: #1e1e1e;
+    color: #fe772e;
+    padding: 3px;
+    text-align: center;
 }
+
+.emptyMessage{
+    height: 180px;
+    width: 180px;
+    display: block;
+    margin: auto;
+    margin-top: 2rem;
+
+}
+
+
 </style>
