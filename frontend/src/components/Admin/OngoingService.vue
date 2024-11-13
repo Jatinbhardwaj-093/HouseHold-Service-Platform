@@ -1,89 +1,114 @@
-<script setup></script>
+<script setup>
+import { ref, onMounted, computed } from 'vue'
+import axios from 'axios'
+import Search from '@/assets/svg/Search.svg?raw'
+
+const token = localStorage.getItem('token')
+const OngoingServices = ref([])
+
+const fetchOngoingServices = async () => {
+    try {
+        const response = await axios.get('http://127.0.0.1:5000/admin/ongoingServices', {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        })
+        OngoingServices.value = response.data
+    } catch (err) {
+        console.error('Failed to fetch ongoing services:', err)
+    }
+}
+
+onMounted(() => {
+    fetchOngoingServices()
+})
+
+// Search bar
+const search = ref('')
+const filteredServices = computed(() => {
+    return search.value
+        ? OngoingServices.value.filter(service =>
+            service.serviceName.toLowerCase().includes(search.value.toLowerCase())
+        )
+        : OngoingServices.value
+})
+
+</script>
 
 <template>
     <div>
         <div class="container">
             <div class="searchBar">
-                <input type="text" class="search" placeholder="Search by customer name" />
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
-                    <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
-                    <g id="SVGRepo_iconCarrier">
-                        <path
-                            d="M11 6C13.7614 6 16 8.23858 16 11M16.6588 16.6549L21 21M19 11C19 15.4183 15.4183 19 11 19C6.58172 19 3 15.4183 3 11C3 6.58172 6.58172 3 11 3C15.4183 3 19 6.58172 19 11Z"
-                            stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-                    </g>
-                </svg>
+                <input type="text" class="search" placeholder="Search by service name" v-model="search" />
+                <p class="searchBtn" v-html="Search"></p>
             </div>
-            <table>
+            <table v-if="filteredServices.length > 0">
                 <thead>
                     <tr class="headrow">
                         <th>S.No</th>
-                        <th>Service ID</th>
+                        <th>serviceName</th>
                         <th>Professional</th>
                         <th>Customer</th>
                         <th>P - Pin Code</th>
                         <th>C - Pin Code</th>
-                        <th>Validity</th>
-                        <th></th>
-                        <th></th>
+                        <th>Status</th>
+                        <th>Request Date</th>
+                        <th>Completion Date</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr>
-                        <td>1</td>
-                        <td>Jatin Slith</td>
-                        <td>Plumber</td>
-                        <td>4 Years</td>
-                        <td>110023</td>
-                        <td>5</td>
-                        <td>Ok</td>
-                        <td><button>Flag</button></td>
-                        <td><button>Delete</button></td>
-                    </tr>
-                    <tr>
-                        <td>1</td>
-                        <td>2</td>
-                        <td>3</td>
-                        <td>4</td>
-                        <td>5</td>
-                        <td>5</td>
-                        <td>Flagged</td>
-                        <td><button>UnFlag</button></td>
-                        <td><button>Delete</button></td>
+                    <tr v-for="(service, index) in filteredServices" :key="service.BookingId">
+                        <td>{{ index + 1 }}</td>
+                        <td>{{ service.serviceName }}</td>
+                        <td>{{ service.professionalName }}</td>
+                        <td>{{ service.customerName }}</td>
+                        <td>{{ service.professionalPincode }}</td>
+                        <td>{{ service.customerPincode }}</td>
+
+                        <td v-if="service.completionDate">Completed</td>
+                        <td v-else-if="service.professionalStatus=='accepted'">Assigned</td>
+                        <td v-else-if="service.professionalStatus=='rejected'">Rejected</td>
+                        <td v-else>Pending...</td>
+
+                        <td>{{ new Date(service.requestDate).toISOString().slice(0, 10) }}</td>
+
+                        <td v-if="service.completionDate">{{ new Date(service.completionDate).toISOString().slice(0, 10) }}</td>
+                        <td v-else>...</td>
                     </tr>
                 </tbody>
             </table>
+            <img v-else class="emptyMessage" src="@/assets/images/empty-box.png" alt="">
         </div>
     </div>
 </template>
 
+
 <style scoped>
 .container {
     width: 95%;
-    height: 100vh;
+    height: 80vh;
     margin: auto;
     border-radius: 1rem;
     box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.6);
     background-color: #3c3c3c;
-    overflow-y: hidden;
-    overflow-x: scroll;
+    overflow: auto;
     scrollbar-width: thin;
 }
 
 .searchBar {
     display: flex;
-    justify-content: space-between;
+    justify-content: start;
     background-color: black;
     box-shadow: 5px 5px 10px rgb(0, 0, 0);
     border-radius: 0.5rem;
     padding: 0.5rem;
     margin: 2rem;
-    width: min(100%, 800px);
+    width: min(100%, 750px);
 }
 
 input {
-    display: inline;
+    width: 95%;
     background-color: transparent;
     border: none;
     outline: none;
@@ -139,17 +164,9 @@ tr {
     align-items: center;
 }
 
-button {
-    border: none;
-    border-radius: 0.2rem;
-    width: 4rem;
-    color: white;
-    cursor: pointer;
-}
-
-svg {
-    height: 30px;
-    width: 30px;
+.searchBtn {
+    height: 35px;
+    width: 35px;
     cursor: pointer;
 }
 
@@ -158,5 +175,13 @@ button {
     color: #fe772e;
     padding: 3px;
     text-align: center;
+}
+
+.emptyMessage{
+    height: 250px;
+    width: 250px;
+    display: block;
+    margin: auto;
+    margin-top: 2rem;
 }
 </style>
