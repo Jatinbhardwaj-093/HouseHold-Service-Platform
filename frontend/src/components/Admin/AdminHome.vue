@@ -1,46 +1,5 @@
-<template>
-    <div class="container">
-        <div class="top">
-            <div class="searchBar">
-                <input type="text" class="search" placeholder="Service Name">
-                <div class="searchBtn" v-html="Search"></div>
-            </div>
-            <div class="createNewBtn" @click="showModal = true">Create New +</div>
-        </div>
-
-        <div class="blocks" >
-            <div class="block" v-for="service in servicesData" :key="service.id">
-                <img v-if="service.image" :src="service.image.filepath"/>
-                <div v-else class="serviceImgHolder"><p v-html="NoImg"></p></div>
-                <div class="serviceName">
-                    <p>{{ service.name }}</p>
-                    <details>
-                        <summary>
-                            <p class="menuDot" v-html="MenuDot"></p>
-                        </summary>
-                        <ul>
-                            <li @click="viewService(service.id)">View</li>
-                            <li @click="openEditModal(service)">Edit</li>
-                            <li @click="deleteService(service.id)">Delete</li>
-                        </ul>
-                    </details>
-                </div>
-            </div>
-        </div>
-
-        <!-- Modal for creating new service -->
-        <Modal :showModal="showModal" @closeModal="showModal = false" />
-
-        <!-- Modal for viewing service details -->
-        <ServiceModal :showServiceModal="showServiceModal" :serviceData="selectedService" @closeServiceModal="showServiceModal = false" />
-
-        <!-- Modal for editing existing service -->
-        <EditModal :showEditModal="showEditModal" :serviceToEdit="editServiceData" @closeEditModal="showEditModal = false" />
-    </div>
-</template>
-
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
 import Modal from './ServiceCreateModel.vue';
 import ServiceModal from './ServiceDetailModel.vue';
@@ -71,21 +30,26 @@ onMounted(async () => {
     const userRole = localStorage.getItem('user_role');
 
     if (!token || userRole !== 'admin') {
-        window.location.href = '/'; 
+        window.location.href = '/';
     } else {
-        try {
-            const response = await axios.get('http://127.0.0.1:5000/admin/', {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-            servicesData.value = response.data; 
-            console.log(servicesData.value);  
-        } catch (err) {
-            error.value = 'Error: ' + (err.response ? err.response.data : err.message); 
-        }
+        await fetchServices();  
     }
+});
+
+//Serch service by name
+const searchServiceName = ref('');
+
+const searchServices = () => {
+    searchServiceName.value = searchServiceName.value.toLowerCase(); 
+};
+
+const filteredServicesData = computed(() => {
+    if (searchServiceName.value) {
+        return servicesData.value.filter(service =>
+            service.name.toLowerCase()==searchServiceName.value
+        );
+    }
+    return servicesData.value;  
 });
 
 // View service details
@@ -153,12 +117,50 @@ const fetchServices = async () => {
 
 </script>
 
+<template>
+    <div class="container">
+        <div class="top">
+            <div class="searchBar">
+                <input type="text" class="search" placeholder="Service Name" v-model="searchServiceName">
+                <div class="searchBtn" v-html="Search" @click="searchServices"></div>
+            </div>
+            <div class="createNewBtn" @click="showModal = true">Create New +</div>
+        </div>
+
+        <div class="blocks">
+            <div class="block" v-for="service in filteredServicesData" :key="service.id">
+                <img v-if="service.image" :src="service.image.filepath"/>
+                <div v-else class="serviceImgHolder"><p v-html="NoImg"></p></div>
+                <div class="serviceName">
+                    <p>{{ service.name }}</p>
+                    <details>
+                        <summary>
+                            <p class="menuDot" v-html="MenuDot"></p>
+                        </summary>
+                        <ul>
+                            <li @click="viewService(service.id)">View</li>
+                            <li @click="openEditModal(service)">Edit</li>
+                            <li @click="deleteService(service.id)">Delete</li>
+                        </ul>
+                    </details>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Components -->
+        <Modal :showModal="showModal" @closeModal="showModal = false" />
+        <ServiceModal :showServiceModal="showServiceModal" :serviceData="selectedService" @closeServiceModal="showServiceModal = false" />
+        <EditModal :showEditModal="showEditModal" :serviceToEdit="editServiceData" @closeEditModal="showEditModal = false" />
+    </div>
+</template>
+
+
 <style scoped>
 .container {
-    overflow: scroll;
+    overflow: auto;
     scrollbar-width: thin;
     width: 95%;
-    height: 100vh;
+    height: 80vh;
     margin: auto;
     padding: 2rem;
     border-radius: 1rem;
@@ -175,7 +177,7 @@ const fetchServices = async () => {
 
 .searchBar {
     display: flex;
-    justify-content: space-between;
+    justify-content: start;
     background-color: black;
     box-shadow: 5px 5px 10px rgb(42, 42, 42);
     border-radius: 0.5rem;
@@ -191,6 +193,7 @@ const fetchServices = async () => {
 }
 
 input {
+    width: 95%;
     background-color: transparent;
     border: none;
     outline: none;
