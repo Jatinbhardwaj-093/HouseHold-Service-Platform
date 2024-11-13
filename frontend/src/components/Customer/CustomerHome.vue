@@ -33,19 +33,19 @@ onMounted(() => {
 });
 
 // Reschedule Service Request
-const reschedule = ref(false);
+const reschedule = reactive({});
 const info = ref({});
 
 const rescheduleBooking = (bookingId) => {
-    reschedule.value = true;
+    reschedule[bookingId] = !reschedule[bookingId];
     info.value = {
         bookingId: bookingId,
         action: 'updateBooking'
     }
 };
 
-const closeRescheduleModal = () => {
-    reschedule.value = false;
+const closeRescheduleModal = (bookingId) => {
+    reschedule[bookingId] = !reschedule[bookingId];
     fetchBookings();
 };
 
@@ -142,7 +142,7 @@ const deleteReview = async (bookingId) => {
     <div>
         <div class="bookingContainer">
             <h1>BOOKING</h1>
-            <table>
+            <table v-if="bookings.length > 0">
                 <thead>
                     <tr class="headrow">
                         <th>S.No</th>
@@ -165,11 +165,12 @@ const deleteReview = async (bookingId) => {
                         <td>{{ booking.professionalName }}</td>
                         <td>{{ new Date(booking.requestDate).toISOString().slice(0, 10) }}</td>
                         <td v-if="booking.completionDate">{{ new Date(booking.completionDate).toISOString().slice(0, 10) }}</td>
-                        <td v-else>Pending</td>
+                        <td v-else>....</td>
                         <td v-if="booking.professionalStatus=='accepted' || booking.professionalStatus=='completed'">Accepted</td>
+                        <td v-else-if="booking.professionalStatus=='rejected'">Rejected</td>
                         <td v-else>Pending</td>
                         <td v-if="booking.completionDate">Completed</td>
-                        <td v-else>Pending</td>
+                        <td v-else>....</td>
 
                         <!-- action button to mark service as completed -->
                         <td v-if="(booking.professionalStatus=='accepted' || booking.professionalStatus=='completed') 
@@ -194,23 +195,24 @@ const deleteReview = async (bookingId) => {
                                 <p v-if="booking.reviewed=='yes'" @click="handleOptionClick(booking.id,'editReview')">Edit Review</p>
                                 <p v-if="booking.reviewed=='yes'" @click="handleOptionClick(booking.id,'deleteReview')">Delete Review</p>
                             </div>
+                            <BookingModal v-if="reschedule[booking.id]" :scheduleInfo="info" @close="closeRescheduleModal(booking.id)" class="rescheduleBookingModal"/>
                         </td>
                     </tr>
                 </tbody>
             </table>
+            <img v-else class="emptyMessage" src="@/assets/images/empty-box.png" alt="NO Data">
         </div>
         <ReviewModal v-if="showModal" :bookingId="booking_id" :action="Action" @closeModal="closeModal" />
-        <BookingModal v-if="reschedule" :scheduleInfo="info" @close="closeRescheduleModal" class="rescheduleBookingModal"/>
     </div>
 </template>
 
 <style scoped>
 
 .rescheduleBookingModal {
-    /* position: absolute; */
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    position: absolute;
+    margin-top: 5px;
+    left: 80%;
+    z-index: 10000;
 }
 
 .bookingContainer{
@@ -220,7 +222,6 @@ const deleteReview = async (bookingId) => {
     border-radius: 1rem;
     padding: 1rem;
     margin: auto;
-
 }
 
 h1{
@@ -248,8 +249,6 @@ table{
     margin: auto;
     overflow: hidden; 
 }
-
-
 
 th,td{
     padding: 4px;
@@ -309,7 +308,7 @@ tr:last-child{
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     border-radius: 4px;
     margin-top: 5px;
-    z-index: 10;
+    z-index: 1000;
     width: 80px;
 }
 
@@ -322,6 +321,15 @@ tr:last-child{
 
 .dropdown-menu p:hover {
     background-color: #383535;
+}
+
+.emptyMessage{
+    height: 250px;
+    width: 250px;
+    display: block;
+    margin: auto;
+    margin-top: 4rem;
+
 }
 
 </style>
