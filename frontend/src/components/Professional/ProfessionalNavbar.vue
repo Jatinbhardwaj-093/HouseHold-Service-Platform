@@ -78,7 +78,7 @@ const closeEditModal = () => {
             </div>
             <div class="menu">
                 <div class="home" @click="$router.push({ name: 'professional' })">Home</div>
-                <div class="appointments" @click="$router.push({ name: 'professional-appointments' })">History</div>
+                <div class="appointments" @click="$router.push({ name: 'professional-history' })">History</div>
                 <div class="stats">Statistics</div>
             </div>
             <div class="logout" v-html="Logout"></div>
