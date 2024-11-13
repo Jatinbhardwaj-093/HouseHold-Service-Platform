@@ -52,7 +52,7 @@ const servicebooking = async () => {
 </script>
 
 <template>
-    <div class="bookingContainer">
+    <div class="bookingModal">
         <div>
             <label for="servicedate">Schedule Date</label>
             <input
@@ -77,7 +77,8 @@ const servicebooking = async () => {
 </template>
 
 <style scoped>
-.bookingContainer {
+
+.bookingModal {
     display: flex;
     flex-direction: column;
     align-items: center;
