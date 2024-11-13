@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify,request,current_app
-from flask_jwt_extended import get_jwt_identity
 from werkzeug.utils import secure_filename
-from models import Services,ServiceImg,Customer,db
+from models import Services,ServiceImg,Customer,Professional,ServiceRequest,ServiceReview,db
+from . import bcrypt,custom_jwt_required
 import os
 import base64
 
@@ -12,6 +12,7 @@ adminApi = Blueprint('adminApi', __name__)
 #********************** Admin Home Api******************************
 
 @adminApi.route('/', methods=['GET', 'OPTIONS'])
+
 def home():
     print('Authorization Header:', request.headers.get('Authorization'))  # Check if JWT is received
     if request.method == 'OPTIONS':
@@ -196,3 +197,95 @@ def delete_customer(customer_id):
     db.session.delete(customer)
     db.session.commit()
     return jsonify({'message': 'Customer deleted successfully'}), 200
+
+#Admin Professional Api
+
+#Read
+@adminApi.route('/professional', methods=['GET'])
+@custom_jwt_required
+def professionals():
+    
+    professionals = Professional.query.all()
+    response = []
+    for professional in professionals:
+        response.append({
+            'professionalId': professional.id,
+            'email': professional.email,
+            'username': professional.username,
+            'pincode': professional.pincode,
+            'serviceId': professional.serviceId,
+            'serviceName': professional.serviceType.serviceName,
+            'rating': professional.rating,
+            'experience': professional.experience,
+            'flag': professional.flag,
+            'verify': professional.verify
+        })
+    return jsonify(response), 200
+
+#Update(Flag)
+@adminApi.route('/professional/<int:professional_id>/flag', methods=['PUT'])
+@custom_jwt_required
+def update_professional(professional_id):
+    professional = Professional.query.get(professional_id)  
+    if not professional:
+        return jsonify({'error': 'Professional not found'}), 404
+    data = request.get_json()
+    if professional.flag == 'yes':
+        professional.flag = 'no'
+    else:
+        professional.flag = 'yes'
+    db.session.commit()
+    return jsonify({'message': 'Professional updated successfully'}), 200
+
+
+#Update(Verify)
+@adminApi.route('/professional/<int:professional_id>/verify', methods=['PUT'])
+@custom_jwt_required
+def update_professional_verify(professional_id):
+    professional = Professional.query.get(professional_id)  
+    if not professional:
+        return jsonify({'error': 'Professional not found'}), 404
+    data = request.get_json()
+    if professional.verify == 'yes':
+        professional.verify = 'no'
+    else:
+        professional.verify = 'yes'
+    db.session.commit()
+    return jsonify({'message': 'Professional updated successfully'}), 200
+
+#Delete
+@adminApi.route('/professional/<int:professional_id>/delete', methods=['DELETE'])
+@custom_jwt_required
+def delete_professional(professional_id):
+    professional = Professional.query.get(professional_id)
+    if not professional:
+        return jsonify({'error': 'Professional not found'}), 404
+    db.session.delete(professional)
+    db.session.commit()
+    return jsonify({'message': 'Professional deleted successfully'}), 200
+
+#Admin OngoingService Api
+
+#Read
+@adminApi.route('/ongoingServices', methods=['GET'])
+@custom_jwt_required
+def ongoingServices():
+    ongoingServices = ServiceRequest.query.all()
+    response = []
+    for ongoingService in ongoingServices:
+        customer = Customer.query.filter_by(id = ongoingService.customerId).first()
+        professional = Professional.query.filter_by(id = ongoingService.professionalId).first()
+        response.append({
+            'bookingId': ongoingService.id,
+            'customerName': customer.username,
+            'professionalName': professional.username,
+            'customerPincode': customer.pincode,
+            'professionalPincode': professional.pincode,
+            'serviceName': ongoingService.service.serviceName,
+            'serviceId': ongoingService.serviceId,
+            'status': ongoingService.professionalStatus,
+            'requestDate': ongoingService.requestDate,
+            'completionDate': ongoingService.completionDate
+            
+        })
+    return jsonify(response), 200
