@@ -6,13 +6,16 @@ import CustomerSignUpView from '@/views/CustomerSignUpView.vue';
 import CustomerHomeView from '@/views/CustomerHomeView.vue';
 import Customer_ServiceView from '@/views/Customer_ServiceView.vue';
 import ParticularService from '@/components/Customer/ParticularService.vue';
+import CustomerStatisticsView from '@/views/Customer_StatsView.vue';
 import AdminHomeView from '@/views/AdminHomeView.vue';
 import Admin_ProfessionalDetailView from '@/views/Admin_ProfessionalDetailView.vue';
 import Admin_CustomerDetailView from '@/views/Admin_CustomerDetailView.vue';
 import Admin_OngoinServiceView from '@/views/Admin_OngoinServiceView.vue';
+import Admin_StatsView from '@/views/Admin_StatsView.vue';
 import ProffesionalSignUp from '@/views/ProffesionalSignUp.vue';
 import ProffesionalHomeView from '@/views/Professional_HomeView.vue';
 import ProfessionalHistory from '@/views/Professional_HistoryView.vue';
+import ProfessionalStatisticsView from '@/views/Professional_StatsView.vue';
 
 
 const routes = [
@@ -56,6 +59,12 @@ const routes = [
     meta: { requiresAuth: true, role: 'admin' }
   },
   {
+    path: '/admin/statistics',
+    name: 'admin-statistics',
+    component: Admin_StatsView,
+    meta: { requiresAuth: true, role: 'admin' }
+  },
+  {
     path: '/customer/signup',
     name: 'customer-signup',
     component: CustomerSignUpView,
@@ -79,6 +88,12 @@ const routes = [
     meta: { requiresAuth: true, role: 'customer' }
   },
   {
+    path: '/customer/statistics',
+    name: 'customer-statistics',
+    component: CustomerStatisticsView,
+    meta: { requiresAuth: true, role: 'customer' }
+  },
+  {
     path: '/professional',
     name: 'professional',
     component: ProffesionalHomeView,
@@ -93,6 +108,12 @@ const routes = [
     path: '/proffessional/history',
     name: 'professional-history',
     component: ProfessionalHistory,
+    meta: { requiresAuth: true, role: 'professional' }
+  },
+  {
+    path: '/proffessional/statistics',
+    name: 'professional-statistics',
+    component: ProfessionalStatisticsView,
     meta: { requiresAuth: true, role: 'professional' }
   }
 ];
