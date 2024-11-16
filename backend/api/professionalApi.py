@@ -4,6 +4,7 @@ import jwt
 from flask_bcrypt import Bcrypt
 from . import bcrypt,custom_jwt_required
 from datetime import datetime
+from sqlalchemy import func
 
 professionalApi = Blueprint('professionalApi', __name__)
 
@@ -231,3 +232,57 @@ def serviceRequestHistory():
     else:
         return jsonify({'message': 'User not found'}), 404
     
+#Professional Stats Api
+@professionalApi.route('/statistics', methods=['GET'])
+@custom_jwt_required
+def statistics():
+    user = request.user
+    founduser = Professional.query.filter_by(username=user).first()
+    
+    if founduser:
+        services = ServiceRequest.query.filter_by(professionalId=founduser.id).all()
+        serviceStatus = {
+            'pending': 0,
+            'completed': 0,
+            'rejected': 0
+        }
+
+        for service in services:
+            if service.professionalStatus == 'pending':
+                serviceStatus['pending'] += 1
+            elif service.professionalStatus == 'completed':
+                serviceStatus['completed'] += 1
+            elif service.professionalStatus == 'rejected':
+                serviceStatus['rejected'] += 1
+        
+        results = (
+            db.session.query(
+                Customer.pincode,  
+                func.count(ServiceRequest.id).label('request_count')  
+            )
+            .join(ServiceRequest, ServiceRequest.customerId == Customer.id)  
+            .group_by(Customer.pincode)  
+            .all()  
+        )
+
+        differentPincode = [
+            {'pincode': row.pincode, 'requestCount': row.request_count} 
+            for row in results
+        ]
+        
+        requestDates = {}
+        for service in services:
+            if str(service.requestDate) not in requestDates:
+                requestDates[str(service.requestDate)] = 1
+            else:
+                requestDates[str(service.requestDate)] += 1
+
+        response = {
+            'ServiceStatus': serviceStatus,
+            'DifferentPincode': differentPincode,
+            'requestDates' : requestDates
+        }
+
+        return jsonify(response), 200
+    else:
+        return jsonify({'message': 'User not found'}), 404

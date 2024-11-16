@@ -4,6 +4,7 @@ from models import Services,ServiceImg,Customer,Professional,ServiceRequest,Serv
 from . import bcrypt,custom_jwt_required
 import os
 import base64
+from sqlalchemy import func
 
 adminApi = Blueprint('adminApi', __name__)
 
@@ -292,3 +293,55 @@ def ongoingServices():
             
         })
     return jsonify(response), 200
+
+
+# Admin Statistics Api
+@adminApi.route('/statistics', methods=['GET'])
+@custom_jwt_required
+def statistics():
+        ratio = {
+            'Customer': db.session.query(Customer.id).count(),
+            'Professional': db.session.query(Professional.id).count()
+        }
+        services = ServiceRequest.query.all()
+        
+        requestsOnDay = {}
+        completionOnDay = {}
+        for service in services:
+            if str(service.requestDate) in requestsOnDay:
+                requestsOnDay[str(service.requestDate)] += 1
+            else:
+                requestsOnDay[str(service.requestDate)] = 1
+                
+            if not service.completionDate:
+                continue
+            elif str(service.completionDate) in completionOnDay:
+                completionOnDay[str(service.completionDate)] += 1
+            else:
+                completionOnDay[str(service.completionDate)] = 1
+            
+        serviceStatus = {
+            'pending': 0,
+            'completed': 0,
+            'rejected': 0
+        }
+
+        for service in services:
+            if service.professionalStatus == 'pending':
+                serviceStatus['pending'] += 1
+            elif service.professionalStatus == 'completed':
+                serviceStatus['completed'] += 1
+            elif service.professionalStatus == 'rejected':
+                serviceStatus['rejected'] += 1
+
+        
+        response = {
+            'ratioOfUsers': ratio,
+            'requestsOnDay': requestsOnDay,
+            'completionOnDay': completionOnDay,
+            'serviceStatus': serviceStatus,
+        }
+        return jsonify(response), 200
+
+
+    

@@ -1,4 +1,6 @@
 from flask import Blueprint, jsonify, request
+from sqlalchemy import func 
+
 from models import Customer, Services, ServiceImg,ServiceRequest,Professional,ServiceReview, db 
 from . import bcrypt,custom_jwt_required
 from datetime import datetime
@@ -335,5 +337,47 @@ def deleteServiceReview(booking_id):
             return jsonify({'message': 'Review deleted successfully'}), 200
         else:
             return jsonify({'message': 'Review not found'}), 404
+    else:
+        return jsonify({'message': 'User not found'}), 404
+    
+
+# Statistics Api
+
+@customerApi.route('/statistics', methods=['GET'])
+@custom_jwt_required
+def getStatistics():
+    user = request.user
+    founduser = Customer.query.filter_by(username = user).first()
+    if founduser:
+        requested_services = (
+        db.session.query(ServiceRequest.serviceId, func.count(ServiceRequest.id).label('requestCount'))
+        .filter(ServiceRequest.customerId == founduser.id)
+        .group_by(ServiceRequest.serviceId)
+        .all()
+        )
+        
+        services = ServiceRequest.query.filter_by(customerId = founduser.id).all()
+        ServiceStatus = {
+            'pending': 0,
+            'completed': 0,
+            'rejected': 0
+        }
+
+        for service in services:
+            if service.professionalStatus == 'pending':
+                ServiceStatus['pending'] += 1
+            elif service.professionalStatus == 'completed':
+                ServiceStatus['completed'] += 1
+            elif service.professionalStatus == 'rejected':
+                ServiceStatus['rejected'] += 1
+            
+        service_data = [{'name': Services.query.get(service.serviceId).serviceName, 'requestCount': service.requestCount} for service in requested_services]
+
+        response = {
+            'AskedServices': service_data,
+            'ServiceStatus': ServiceStatus
+            
+            }
+        return response, 200
     else:
         return jsonify({'message': 'User not found'}), 404
