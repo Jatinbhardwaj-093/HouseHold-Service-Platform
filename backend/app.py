@@ -2,25 +2,24 @@ from flask import Flask
 from flask_migrate import Migrate
 from models import db 
 from flask_cors import CORS
-#Api Imports
+
+
+# Api Imports
 from api.loginApi import loginApi  
 from api.customerApi import customerApi
 from api.professionalApi import professionalApi
 from api.adminApi import adminApi
-#congig imports
+# Config imports
 from config import Config 
-#bcrypt and jwt instance importing
-from api import bcrypt,jwt_manager
-
-
-
+# bcrypt and jwt instance importing
+from api import bcrypt, jwt_manager, redis_client
 
 def create_app():
     app = Flask(__name__)
     CORS(app, supports_credentials=True)
     app.config.from_object(Config)
 
-    bcrypt.init_app(app)  #Intialize bcrypt hashing library
+    bcrypt.init_app(app)  # Initialize bcrypt hashing library
     db.init_app(app)  # Initialize the db with the app
     jwt_manager.init_app(app)  # Initialize the JWT library
     migrate = Migrate(app, db)  # Initialize Flask-Migrate
