@@ -1,21 +1,26 @@
-from flask import Blueprint, jsonify,request,current_app
+from flask import Blueprint, jsonify, request, current_app
 from werkzeug.utils import secure_filename
-from models import Services,ServiceImg,Customer,Professional,ServiceRequest,ServiceReview,db
-from . import bcrypt,custom_jwt_required
+from models import Services, ServiceImg, Customer, Professional, ServiceRequest, ServiceReview, db
+from . import bcrypt, custom_jwt_required,redis_client
 import os
 import base64
 from sqlalchemy import func
+from datetime import timedelta
+import json
 
 adminApi = Blueprint('adminApi', __name__)
 
-
-
-#********************** Admin Home Api******************************
-
+# ******************* Admin Home Api ***************
 @adminApi.route('/', methods=['GET'])
 @custom_jwt_required
 def home():
     try:
+        cache_key = 'admin:services:all'
+        cached_data = redis_client.get(cache_key)
+        
+        if cached_data:
+            return jsonify(json.loads(cached_data)), 200
+
         services = Services.query.all()
         response = []
 
@@ -28,15 +33,17 @@ def home():
                 'name': service.serviceName,
                 'image': img.filepath if img else None
             })
+        
+        redis_client.setex(cache_key, timedelta(minutes=15), json.dumps(response))
         return jsonify(response), 200
     except Exception as e:
-        print(f"Error: {str(e)}")
-        return jsonify({'message': 'An error occurred'}), 500
+        return jsonify({'message': f'An error occurred: {str(e)}'}), 500
 
 
-#********************** New Service Api******************************
+# ******************* Admin Service Api ***************
 
-# Create
+#Create
+
 @adminApi.route('/service', methods=['POST'])
 @custom_jwt_required
 def create_service():
@@ -66,13 +73,20 @@ def create_service():
         )
         db.session.add(service_image)
         db.session.commit()
-
+    
+    redis_client.delete('admin:services:all')
     return jsonify({'message': 'Service created successfully', 'service_id': new_service.id}), 201
 
 #Read
 @adminApi.route('/service/<int:service_id>', methods=['GET'])
 @custom_jwt_required
 def read_service(service_id):
+    cache_key = f'admin:service:{service_id}'
+    cached_data = redis_client.get(cache_key)
+    
+    if cached_data:
+        return jsonify(json.loads(cached_data)), 200
+        
     service = Services.query.filter_by(id=service_id).first()
     
     if not service:
@@ -91,10 +105,11 @@ def read_service(service_id):
             'mimetype': service_img.mimetype if service_img else None
         }
     }
-
+    
+    redis_client.setex(cache_key, timedelta(minutes=15), json.dumps(service_data))
     return jsonify(service_data), 200
 
-# Update
+#Update
 @adminApi.route('/service/<int:service_id>', methods=['PUT'])
 @custom_jwt_required
 def edit_service(service_id):
@@ -109,26 +124,23 @@ def edit_service(service_id):
     service.description = data['description']
     service.price = data['price']
 
-
     if 'image' in request.files:
         image = request.files['image']
-
-        # Delete the old image
         existing_image = ServiceImg.query.filter_by(Service_id=service.id).first()
         if existing_image:
             os.remove(existing_image.filepath)  
             db.session.delete(existing_image)
 
-        # Save the new image
         filename = secure_filename(image.filename)
         filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
         image.save(filepath)
-
 
         new_image = ServiceImg(name=filename, filepath=filepath, mimetype=image.mimetype, Service_id=service.id)
         db.session.add(new_image)
 
     db.session.commit()
+    redis_client.delete(f'admin:service:{service_id}')
+    redis_client.delete('admin:services:all')
     return jsonify({'message': 'Service updated successfully'}), 200
 
 
@@ -143,7 +155,6 @@ def delete_service(service_id):
 
     service_img = ServiceImg.query.filter_by(Service_id=service_id).first()
 
-
     if service_img:
         image_path = os.path.join(current_app.config['UPLOAD_FOLDER'], service_img.filepath)
         if os.path.exists(image_path):
@@ -151,17 +162,25 @@ def delete_service(service_id):
         db.session.delete(service_img)
 
     db.session.delete(service)
-    db.session.commit() 
-
+    db.session.commit()
+    
+    redis_client.delete(f'admin:service:{service_id}')
+    redis_client.delete('admin:services:all')
     return jsonify({'message': 'Service and associated image deleted successfully'}), 200
 
 
-# Admin Customers Api
+#******************* Admin Customer Api ***************
 
 #Read
 @adminApi.route('/customers', methods=['GET'])
 @custom_jwt_required
 def customers():
+    cache_key = 'admin:customers:all'
+    cached_data = redis_client.get(cache_key)
+    
+    if cached_data:
+        return jsonify(json.loads(cached_data)), 200
+        
     customers = Customer.query.all()
     response = []
     for customer in customers:
@@ -174,9 +193,11 @@ def customers():
             'address': customer.Address,
             'flag': customer.flag
         })
+    
+    redis_client.setex(cache_key, timedelta(minutes=15), json.dumps(response))
     return jsonify(response), 200
 
-#Update(Flag)
+#Update
 @adminApi.route('/customer/<int:customer_id>/flag', methods=['PUT'])
 @custom_jwt_required
 def update_customer(customer_id):
@@ -189,6 +210,7 @@ def update_customer(customer_id):
     else:
         customer.flag = 'yes'
     db.session.commit()
+    redis_client.delete('admin:customers:all')
     return jsonify({'message': 'Customer updated successfully'}), 200   
 
 #Delete
@@ -200,15 +222,22 @@ def delete_customer(customer_id):
         return jsonify({'error': 'Customer not found'}), 404
     db.session.delete(customer)
     db.session.commit()
+    redis_client.delete('admin:customers:all')
     return jsonify({'message': 'Customer deleted successfully'}), 200
 
-#Admin Professional Api
+
+#******************* Admin Professional Api ***************
 
 #Read
 @adminApi.route('/professional', methods=['GET'])
 @custom_jwt_required
 def professionals():
+    cache_key = 'admin:professionals:all'
+    cached_data = redis_client.get(cache_key)
     
+    if cached_data:
+        return jsonify(json.loads(cached_data)), 200
+        
     professionals = Professional.query.all()
     response = []
     for professional in professionals:
@@ -224,9 +253,11 @@ def professionals():
             'flag': professional.flag,
             'verify': professional.verify
         })
+    
+    redis_client.setex(cache_key, timedelta(minutes=15), json.dumps(response))
     return jsonify(response), 200
 
-#Update(Flag)
+#Update
 @adminApi.route('/professional/<int:professional_id>/flag', methods=['PUT'])
 @custom_jwt_required
 def update_professional(professional_id):
@@ -239,10 +270,10 @@ def update_professional(professional_id):
     else:
         professional.flag = 'yes'
     db.session.commit()
+    redis_client.delete('admin:professionals:all')
     return jsonify({'message': 'Professional updated successfully'}), 200
 
-
-#Update(Verify)
+#Update
 @adminApi.route('/professional/<int:professional_id>/verify', methods=['PUT'])
 @custom_jwt_required
 def update_professional_verify(professional_id):
@@ -255,6 +286,7 @@ def update_professional_verify(professional_id):
     else:
         professional.verify = 'yes'
     db.session.commit()
+    redis_client.delete('admin:professionals:all')
     return jsonify({'message': 'Professional updated successfully'}), 200
 
 #Delete
@@ -266,14 +298,22 @@ def delete_professional(professional_id):
         return jsonify({'error': 'Professional not found'}), 404
     db.session.delete(professional)
     db.session.commit()
+    redis_client.delete('admin:professionals:all')
     return jsonify({'message': 'Professional deleted successfully'}), 200
 
-#Admin OngoingService Api
+
+#******************* Admin Service Api ***************
 
 #Read
 @adminApi.route('/ongoingServices', methods=['GET'])
 @custom_jwt_required
 def ongoingServices():
+    cache_key = 'admin:ongoing_services:all'
+    cached_data = redis_client.get(cache_key)
+    
+    if cached_data:
+        return jsonify(json.loads(cached_data)), 200
+        
     ongoingServices = ServiceRequest.query.all()
     response = []
     for ongoingService in ongoingServices:
@@ -288,60 +328,59 @@ def ongoingServices():
             'serviceName': ongoingService.service.serviceName,
             'serviceId': ongoingService.serviceId,
             'status': ongoingService.professionalStatus,
-            'requestDate': ongoingService.requestDate,
-            'completionDate': ongoingService.completionDate
-            
-        })
+            'requestDate': ongoingService.requestDate.isoformat() ,
+            'completionDate': ongoingService.completionDate.isoformat() if ongoingService.completionDate else None
+            })
+
+    
+    redis_client.setex(cache_key, timedelta(minutes=5), json.dumps(response))
     return jsonify(response), 200
 
 
-# Admin Statistics Api
+# ******************* Admin Statistics Api ***************
 @adminApi.route('/statistics', methods=['GET'])
 @custom_jwt_required
 def statistics():
-        ratio = {
-            'Customer': db.session.query(Customer.id).count(),
-            'Professional': db.session.query(Professional.id).count()
-        }
-        services = ServiceRequest.query.all()
-        
-        requestsOnDay = {}
-        completionOnDay = {}
-        for service in services:
-            if str(service.requestDate) in requestsOnDay:
-                requestsOnDay[str(service.requestDate)] += 1
-            else:
-                requestsOnDay[str(service.requestDate)] = 1
-                
-            if not service.completionDate:
-                continue
-            elif str(service.completionDate) in completionOnDay:
-                completionOnDay[str(service.completionDate)] += 1
-            else:
-                completionOnDay[str(service.completionDate)] = 1
-            
-        serviceStatus = {
-            'pending': 0,
-            'completed': 0,
-            'rejected': 0
-        }
-
-        for service in services:
-            if service.professionalStatus == 'pending':
-                serviceStatus['pending'] += 1
-            elif service.professionalStatus == 'completed':
-                serviceStatus['completed'] += 1
-            elif service.professionalStatus == 'rejected':
-                serviceStatus['rejected'] += 1
-
-        
-        response = {
-            'ratioOfUsers': ratio,
-            'requestsOnDay': requestsOnDay,
-            'completionOnDay': completionOnDay,
-            'serviceStatus': serviceStatus,
-        }
-        return jsonify(response), 200
-
-
+    ratio = {
+        'Customer': db.session.query(Customer.id).count(),
+        'Professional': db.session.query(Professional.id).count()
+    }
+    services = ServiceRequest.query.all()
     
+    requestsOnDay = {}
+    completionOnDay = {}
+    for service in services:
+        if str(service.requestDate) in requestsOnDay:
+            requestsOnDay[str(service.requestDate)] += 1
+        else:
+            requestsOnDay[str(service.requestDate)] = 1
+            
+        if not service.completionDate:
+            continue
+        elif str(service.completionDate) in completionOnDay:
+            completionOnDay[str(service.completionDate)] += 1
+        else:
+            completionOnDay[str(service.completionDate)] = 1
+        
+    serviceStatus = {
+        'pending': 0,
+        'completed': 0,
+        'rejected': 0
+    }
+
+    for service in services:
+        if service.professionalStatus == 'pending':
+            serviceStatus['pending'] += 1
+        elif service.professionalStatus == 'completed':
+            serviceStatus['completed'] += 1
+        elif service.professionalStatus == 'rejected':
+            serviceStatus['rejected'] += 1
+
+    response = {
+        'ratioOfUsers': ratio,
+        'requestsOnDay': requestsOnDay,
+        'completionOnDay': completionOnDay,
+        'serviceStatus': serviceStatus,
+    }
+    
+    return jsonify(response), 200

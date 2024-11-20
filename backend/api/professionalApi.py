@@ -2,12 +2,15 @@ from flask import Blueprint, jsonify, request
 from models import Professional, db ,Services,ServiceRequest, ServiceImg, ServiceReview, Customer
 import jwt
 from flask_bcrypt import Bcrypt
-from . import bcrypt,custom_jwt_required
-from datetime import datetime
+from . import bcrypt,custom_jwt_required,redis_client
+from datetime import datetime, timedelta
 from sqlalchemy import func
+import json
 
 professionalApi = Blueprint('professionalApi', __name__)
 
+
+# ******************************Professional SIGNUP API****************************************
 @professionalApi.route('/signup', methods=['POST'])
 def signup():
     user = request.get_json()['username']
@@ -32,6 +35,7 @@ def signup():
         )
         db.session.add(newuser)
         db.session.commit()
+        redis_client.delete('admin:professionals:all')
         return jsonify({'message': 'User created successfully'}), 201
 
 
@@ -48,17 +52,19 @@ def get_services():
         })
     return jsonify(response), 200
 
-# Professional Home Api
+# ******************************Professional HOME API****************************************
 @professionalApi.route('/', methods=['GET'])
 @custom_jwt_required
 def home():
-    if request.method == 'OPTIONS':
-        return jsonify({'message': 'CORS preflight response'}), 200
-
     try:
         user = request.user
         founduser = Professional.query.filter_by(username = user).first()
         if founduser:
+            cached_key = f'professional:{founduser.id}:details'
+            cached_data = redis_client.get(cached_key)
+            if cached_data:
+                return jsonify(json.loads(cached_data)), 200
+            
             response = {
                 'id': founduser.id,
                 'username': founduser.username,
@@ -66,39 +72,52 @@ def home():
                 'email': founduser.email,
                 'contact': founduser.contact,
                 'experience': founduser.experience,
-                'pincode': founduser.pincode
+                'pincode': founduser.pincode,
+                'serviceType': founduser.serviceType.serviceName
             }
+            redis_client.setex(cached_key, timedelta(minutes=15), json.dumps(response))
             return jsonify(response), 200
         else:
             return jsonify({'message': 'User not found'}), 404
 
     except Exception as e:
-        print(f"Error: {str(e)}")
-        return jsonify({'message': 'An error occurred'}), 500
+        return jsonify({'message': f'An error occurred: {str(e)}'}), 500
+        
     
-# Professional Profile Api
+# ******************************Professional PROFILE API****************************************
 
 #Read
-
 @professionalApi.route('/profile', methods=['GET'])
 @custom_jwt_required
 def profile():
-    user = request.user
-    founduser = Professional.query.filter_by(username = user).first()
-    
-    if founduser:
-        return jsonify({
-            'id': founduser.id,
-            'email': founduser.email,
-            'username': founduser.username,
-            'contact': founduser.contact,
-            'pincode': founduser.pincode,
-            'serviceType': founduser.serviceType.serviceName,
-            'experience': founduser.experience
-        }), 200
+    try:
+        user = request.user
+        founduser = Professional.query.filter_by(username = user).first()
+        if founduser:
+            cached_key = f'professional:{founduser.id}:details'
+            cached_data = redis_client.get(cached_key)
+            if cached_data:
+                return jsonify(json.loads(cached_data)), 200
         
-    else:
-        return jsonify({'message': 'User not found'}), 404
+            response = {
+                'id': founduser.id,
+                'username': founduser.username,
+                'password': '',
+                'email': founduser.email,
+                'contact': founduser.contact,
+                'experience': founduser.experience,
+                'pincode': founduser.pincode,
+                'serviceType': founduser.serviceType.serviceName
+            }
+            redis_client.setex(cached_key, timedelta(minutes=15), json.dumps(response))
+            return jsonify(response), 200
+            
+        else:
+            return jsonify({'message': 'User not found'}), 404
+
+    except Exception as e:
+        print(e)
+        return jsonify({'message': f'An error occurred: {str(e)}'}), 500
     
 #Update
 @professionalApi.route('/profile', methods=['PUT'])
@@ -116,47 +135,60 @@ def updateProfile():
         founduser.pincode = data['pincode']
         founduser.experience = data['experience']
         db.session.commit()
+        
+        redis_client.delete(f'professional:{founduser.id}:details')
+        redis_client.delete('admin:professionals:all')
         return jsonify({'message': 'Profile updated successfully'}), 200
     else:
         return jsonify({'message': 'User not found'}), 404
     
-#Professional Services Request Api
+# ******************************Professional SERVICE REQUESTS API****************************************
 
 #Read
 @professionalApi.route('/service/requests', methods=['GET'])
 @custom_jwt_required
 def serviceRequests():
-    user = request.user
-    founduser = Professional.query.filter_by(username = user).first()
-    if founduser:
-        requests = ServiceRequest.query.filter_by(professionalId = founduser.id).all()
-        newRequests = []
-        ongoingRequests = []
-        for serviceRequest in requests:
-            foundCustomer = Customer.query.filter_by(id = serviceRequest.customerId).first()
-            data = {
-                'id': serviceRequest.id,
-                'customerId': serviceRequest.customerId,
-                'customerName': foundCustomer.username,
-                'customerAddress': foundCustomer.Address,
-                'customerContact': foundCustomer.contact,
-                'customerPincode': foundCustomer.pincode,
-                'requestDate': serviceRequest.requestDate,
-                'completionDate': serviceRequest.completionDate,
-                'customerStatus': serviceRequest.customerStatus,
-                'professionalStatus': serviceRequest.professionalStatus
+    try:
+        user = request.user
+        founduser = Professional.query.filter_by(username = user).first()
+        if founduser:
+            cached_key = f'professional:{founduser.id}:service:requests'
+            cached_data = redis_client.get(cached_key)
+            if cached_data:
+                return jsonify(json.loads(cached_data)), 200
+            
+            requests = ServiceRequest.query.filter_by(professionalId = founduser.id).all()
+            newRequests = []
+            ongoingRequests = []
+            for serviceRequest in requests:
+                foundCustomer = Customer.query.filter_by(id = serviceRequest.customerId).first()
+                data = {
+                    'id': serviceRequest.id,
+                    'customerId': serviceRequest.customerId,
+                    'customerName': foundCustomer.username,
+                    'customerAddress': foundCustomer.Address,
+                    'customerContact': foundCustomer.contact,
+                    'customerPincode': foundCustomer.pincode,
+                    'requestDate': serviceRequest.requestDate.isoformat() if serviceRequest.completionDate else None,
+                    'completionDate': serviceRequest.completionDate.isoformat() if serviceRequest.completionDate else None,
+                    'customerStatus': serviceRequest.customerStatus,
+                    'professionalStatus': serviceRequest.professionalStatus
+                }
+                if serviceRequest.professionalStatus == 'pending':
+                    newRequests.append(data)
+                elif serviceRequest.professionalStatus == 'accepted':
+                    ongoingRequests.append(data)
+            response = {
+                'newRequests': newRequests,
+                'ongoingRequests': ongoingRequests
             }
-            if serviceRequest.professionalStatus == 'pending':
-                newRequests.append(data)
-            elif serviceRequest.professionalStatus == 'accepted':
-                ongoingRequests.append(data)
-        response = {
-            'newRequests': newRequests,
-            'ongoingRequests': ongoingRequests
-        }
-        return jsonify(response), 200
-    else:
-        return jsonify({'message': 'User not found'}), 404
+            redis_client.setex(cached_key, timedelta(minutes=15), json.dumps(response))
+            return jsonify(response), 200
+        else:
+            return jsonify({'message': 'User not found'}), 404
+    
+    except Exception as e:
+        return jsonify({'message': f'An error occurred: {str(e)}'}), 500
     
 #Update Service Booking
 @professionalApi.route('/service/request/<int:booking_id>', methods=['PUT'])
@@ -172,6 +204,11 @@ def updateServiceBooking(booking_id):
                 booking.customerStatus = 'Pending'
             booking.professionalStatus = data['professionalStatus']    
             db.session.commit()
+            
+            redis_client.delete(f'professional:{founduser.id}:service:requests')
+            redis_client.delete(f'customer:{booking.customerId}:service:bookings')
+            redis_client.delete('admin:ongoing_services:all')
+            
             return jsonify({'message': 'Booking updated successfully'}), 200
         else:
             return jsonify({'message': 'Booking not found'}), 404
@@ -191,6 +228,11 @@ def updateServiceCompletion(booking_id):
             booking.completionDate = datetime.strptime(data['completionDate'], "%Y-%m-%d").date()
             booking.professionalStatus = 'completed'
             db.session.commit()
+            
+            redis_client.delete(f'professional:{founduser.id}:service:requests')
+            redis_client.delete(f'customer:{booking.customerId}:service:bookings')
+            redis_client.delete('admin:ongoing_services:all')
+            
             return jsonify({'message': 'Booking updated successfully'}), 200
         else:
             return jsonify({'message': 'Booking not found'}), 404
@@ -198,41 +240,52 @@ def updateServiceCompletion(booking_id):
         return jsonify({'message': 'User not found'}), 404
     
     
-#Professional Service Request History Api
+# ******************************Customer SERVICE REQUESTS API****************************************
 
 #Read
 @professionalApi.route('/service/requests/history', methods=['GET'])
 @custom_jwt_required
 def serviceRequestHistory():
-    user = request.user
-    founduser = Professional.query.filter_by(username = user).first()
-    if founduser:
-        requests = ServiceRequest.query.filter_by(professionalId = founduser.id).all()
-        response = []
-        for serviceRequest in requests:
-            foundCustomer = Customer.query.filter_by(id = serviceRequest.customerId).first()
-            foundReview = ServiceReview.query.filter_by(ServiceRequestId = serviceRequest.id).first()
-            data = {
-                'id': serviceRequest.id,
-                'customerId': serviceRequest.customerId,
-                'customerName': foundCustomer.username,
-                'customerAddress': foundCustomer.Address,
-                'customerContact': foundCustomer.contact,
-                'customerPincode': foundCustomer.pincode,
-                'requestDate': serviceRequest.requestDate,
-                'completionDate': serviceRequest.completionDate,
-                'customerStatus': serviceRequest.customerStatus,
-                'professionalStatus': serviceRequest.professionalStatus,
-                'reviewed': serviceRequest.reviewed,
-                'rating': foundReview.rating if foundReview else None,
-                'review': foundReview.review if foundReview else None
-            }
-            response.append(data)
-        return jsonify(response), 200
-    else:
-        return jsonify({'message': 'User not found'}), 404
+    try:
+        user = request.user
+        founduser = Professional.query.filter_by(username = user).first()
+        if founduser:
+            cached_key = f'professional:{founduser.id}:service:requests:history'
+            cached_data = redis_client.get(cached_key)
+            if cached_data:
+                return jsonify(json.loads(cached_data)), 200
+            
+            requests = ServiceRequest.query.filter_by(professionalId = founduser.id).all()
+            response = []
+            for serviceRequest in requests:
+                foundCustomer = Customer.query.filter_by(id = serviceRequest.customerId).first()
+                foundReview = ServiceReview.query.filter_by(ServiceRequestId = serviceRequest.id).first()
+                data = {
+                    'id': serviceRequest.id,
+                    'customerId': serviceRequest.customerId,
+                    'customerName': foundCustomer.username,
+                    'customerAddress': foundCustomer.Address,
+                    'customerContact': foundCustomer.contact,
+                    'customerPincode': foundCustomer.pincode,
+                    'requestDate': serviceRequest.requestDate.isoformat() if serviceRequest.completionDate else None,
+                    'completionDate': serviceRequest.completionDate.isoformat() if serviceRequest.completionDate else None,
+                    'customerStatus': serviceRequest.customerStatus,
+                    'professionalStatus': serviceRequest.professionalStatus,
+                    'reviewed': serviceRequest.reviewed,
+                    'rating': foundReview.rating if foundReview else None,
+                    'review': foundReview.review if foundReview else None
+                }
+                response.append(data)
+            
+            redis_client.setex(cached_key, timedelta(minutes=15), json.dumps(response))
+            return jsonify(response), 200
+        else:
+            return jsonify({'message': 'User not found'}), 404
     
-#Professional Stats Api
+    except Exception as e:
+        return jsonify({'message': f'An error occurred: {str(e)}'}), 500
+    
+# ******************************STATISTICS API****************************************
 @professionalApi.route('/statistics', methods=['GET'])
 @custom_jwt_required
 def statistics():
