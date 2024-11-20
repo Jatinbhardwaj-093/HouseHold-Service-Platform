@@ -6,10 +6,27 @@ import jwt
 from functools import wraps
 from os import getenv
 from datetime import datetime, timezone
+import redis
+from config import Config
 
 
 bcrypt = Bcrypt()
 jwt_manager = JWTManager()
+
+redis_client = None
+# Initialize Redis client
+try:
+        redis_client = redis.StrictRedis(
+            host=Config.REDIS_HOST,        
+            port=Config.REDIS_PORT,        
+            db=Config.REDIS_DB,           
+            decode_responses=True,  
+            socket_timeout=5              
+        )
+        redis_client.ping()
+except Exception as e:
+    print(f"Redis connection failed: {str(e)}")
+    redis_client = None
 
 def custom_jwt_required(f):
     @wraps(f)
