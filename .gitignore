@@ -48,3 +48,7 @@ backend/.flaskenv
 backend/.mypy_cache/
 backend/.venv/
 backend/migrations/
+
+
+# Ignore all static files in backend
+backend/Static/
