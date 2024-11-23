@@ -17,6 +17,14 @@ class Customer(db.Model):
     pincode = db.Column(db.Integer, nullable=False)
     Address= db.Column(db.String, nullable=False)
     flag = db.Column(db.String, default='no')
+
+class CustomerImg(db.Model):
+    __tablename__ = 'CustomerImg'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.Text, nullable=False)
+    filepath = db.Column(db.String(200), nullable=False)
+    mimetype = db.Column(db.Text, nullable=False)
+    Customer_id = db.Column(db.Integer, db.ForeignKey('Customer.id'))  
     
 class Professional(db.Model):
     __tablename__ = 'Professional'
@@ -34,6 +42,13 @@ class Professional(db.Model):
 
     serviceType = db.relationship('Services', backref='professionals', lazy=True)
 
+class ProfessionalImg(db.Model):
+    __tablename__ = 'ProfessionalImg'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.Text, nullable=False)
+    filepath = db.Column(db.String(200), nullable=False)
+    mimetype = db.Column(db.Text, nullable=False)
+    Professional_id = db.Column(db.Integer, db.ForeignKey('Professional.id')) 
 class Services(db.Model):
     __tablename__ = 'Services'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
