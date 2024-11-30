@@ -24,11 +24,11 @@ const { ServiceData } = defineProps({
                 <p class="descriptionHead">Description:</p>
                 <p>{{ ServiceData.description }}</p>
             </div>
-            <div class="rating">
+            <div v-if="ServiceData.rating>0" class="rating">
                 <p>Rating:</p>
-                <p class="star-icon" v-for="i in 5" :key="i"><span v-html="FillStar"></span></p>
+                <p class="star-icon" v-for="i in ServiceData.rating" :key="i"><span v-html="FillStar"></span></p>
             </div>
-
+            <div v-else class="notRated">Not rated yet!</div>
             <div class="cross" @click="$emit('close')">
                 <p v-html="Cross"></p>
             </div>
@@ -121,7 +121,15 @@ const { ServiceData } = defineProps({
 .rating p {
     font-size: 1.5rem;
 }
-
+.notRated {
+    grid-area: rating;
+    color: rgb(202, 202, 87);
+    text-align: center;
+    vertical-align: bottom;
+    font-size: 1.5rem;
+    font-weight: bolder;
+    font-style: italic;
+}
 .star-icon {
     height: 25px;
     width: 25px;

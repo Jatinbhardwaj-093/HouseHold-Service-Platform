@@ -1,11 +1,10 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
+import DefaultProfile from '@/assets/svg/DefaultProfile.svg?raw'
 
 const profile = ref(null) 
-const token = localStorage.getItem('token')
-
-
+const token = localStorage.getItem('customerToken')
 
 onMounted(() => {
     axios.get('http://127.0.0.1:5000/customer/profile', {
@@ -14,7 +13,7 @@ onMounted(() => {
         }
     })
     .then((response) => {
-        profile.value = response.data 
+        profile.value = response.data.customer 
     })
     .catch((error) => {
         console.error(error)
@@ -33,7 +32,14 @@ const openEditModal = () => {
     <div>
         <div class="modal-content" v-if="profile">
             <div class="profileModal">
-                <div class="profilePic"></div>
+                <div class="profilePic" @click="showModal">
+                    <img v-if="profile.image_name"
+                        :src="'http://127.0.0.1:5000/static/customers_imgs/' + profile.image_name"
+                        alt="Profile Image" 
+                        class="profile-img"
+                    />
+                    <p v-else v-html="DefaultProfile" class="profile-img"></p>
+                </div>
                 <div class="detail">
                     <div class="customerName">{{ profile.username }}</div>
                     <div class="contactDetail">
@@ -55,9 +61,9 @@ const openEditModal = () => {
 <style scoped>
 .modal-content {
     position: absolute;
-    top: 15%;
+    top: 14%;
     left: 1%;
-    width: max(45%, 350px);
+    width: max(30%, 400px);
     z-index: 10000;
 }
 
@@ -73,12 +79,20 @@ const openEditModal = () => {
 }
 
 .profilePic {
-    width: 3.5rem;
-    height: 3.5rem;
+    width: 4rem;
+    height: 4rem;
     border-radius: 50%;
     margin-top: 1rem;
+    padding: 5px;
     background-color: #d9d9d9;
     box-shadow: 5px 5px 25px rgb(0, 0, 0);
+}
+
+.profile-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    overflow: hidden;
 }
 
 .customerName {
@@ -99,7 +113,7 @@ const openEditModal = () => {
     margin-bottom: 10px;
 }
 .addressDetail {
-    margin-bottom: 5px;
+    margin-bottom: 8px;
 }
 
 .editProfile {

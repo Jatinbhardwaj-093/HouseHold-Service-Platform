@@ -12,7 +12,6 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 
-// Props and emits to support v-model
 const props = defineProps({
     modelValue: String
 })
@@ -36,15 +35,16 @@ const toggleDropdown = () => {
 const selectOption = (option) => {
     selectedText.value = option.label
     emit('update:modelValue', option.value) // Emit the selected value to the parent
-    isOpen.value = false
+    closeDropdown()
 }
 
 // Close dropdown when clicking outside
 const closeDropdown = (e) => {
-    if (customSelect.value && !customSelect.value.contains(e.target)) {
-        isOpen.value = false
+    if (customSelect.value && customSelect.value.contains && !customSelect.value.contains(e.target)) {
+        isOpen.value = false;
     }
-}
+};
+
 
 // When component mounts, close dropdown on outside click
 onMounted(() => {
@@ -88,7 +88,7 @@ watch(() => props.modelValue, (newValue) => {
     width: inherit;
     top: 110%;
     right: 1px;
-    background-color: rgba(0, 0, 0, 0.95);
+    background-color: rgb(70, 69, 69);
     color: rgba(255, 255, 255, 0.6);
     border-radius: 0.5rem;
     padding: 0;

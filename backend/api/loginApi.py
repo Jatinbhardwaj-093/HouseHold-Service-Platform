@@ -16,6 +16,24 @@ def create_jwt_token(data):
     token = jwt.encode(payload, getenv('SECRET_KEY'), algorithm='HS256')
     return token
 
+#To check the condition of user
+@loginApi.route('/condition/<role>/<username>', methods=['GET'])
+def condition(role, username):
+    if role == 'professional':
+        user = Professional.query.filter_by(username=username).first()
+        response = {
+            'flag': user.flag,
+            'verify': user.verify
+        }
+    elif role == 'customer':
+        user = Customer.query.filter_by(username=username).first()
+        response = {
+            'flag': user.flag
+        }
+    
+    return jsonify(response), 200
+
+#Main Api to login
 @loginApi.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
@@ -44,3 +62,5 @@ def login():
         return jsonify({'token': token}), 200
 
     return jsonify({'message': 'Invalid credentials'}), 401
+
+

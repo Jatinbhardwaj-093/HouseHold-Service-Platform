@@ -4,7 +4,7 @@ import { ref, onMounted, computed } from 'vue';
 import Review from '@/assets/svg/Review.svg?raw';
 import ReviewModal from './ReviewModal.vue';
 
-const token = localStorage.getItem('token');
+const token = localStorage.getItem('professionalToken');
 
 const requests = ref([]);
 

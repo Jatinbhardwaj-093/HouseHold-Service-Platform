@@ -12,11 +12,11 @@ class Config:
     REDIS_HOST = 'localhost'
     REDIS_PORT = 6379
     REDIS_DB = 0 
-    
-    # Email Configuration
-    MAIL_SERVER = 'smtp.gmail.com'
-    MAIL_PORT = 465
-    MAIL_USE_SSL = True
-    MAIL_USERNAME = os.getenv('MAIL_DEFAULT_SENDER')
-    MAIL_PASSWORD = os.getenv('MAIL_PASSWORD')
-    MAIL_DEFAULT_SENDER = os.getenv('MAIL_DEFAULT_SENDER')
+        
+    # Email Configuration for MailHog
+    MAIL_SERVER = 'localhost'  
+    MAIL_PORT = 1025           
+    MAIL_USE_SSL = False       
+    MAIL_USERNAME = None      
+    MAIL_PASSWORD = None       
+    MAIL_DEFAULT_SENDER = os.getenv('MAIL_DEFAULT_SENDER')  

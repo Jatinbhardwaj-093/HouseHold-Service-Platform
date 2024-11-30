@@ -76,6 +76,8 @@ class ServiceRequest(db.Model):
     professionalStatus = db.Column(db.String, default='pending')
     reviewed = db.Column(db.String, default='no')
     
+    customer = db.relationship('Customer', backref='serviceRequest', lazy=True)
+    professional = db.relationship('Professional', backref='serviceRequest', lazy=True)
     service = db.relationship('Services', backref='serviceRequest', lazy=True)
 
 class ServiceReview(db.Model):

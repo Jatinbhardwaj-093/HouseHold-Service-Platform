@@ -1,19 +1,3 @@
-<template>
-    <div v-if="showModal" class="modal">
-        <form @submit.prevent="submitForm">
-            <div class="serviceImg">
-                <p v-html="Img"></p>
-                <input type="file" class="ImgFilePath" @change="imgPath" accept="image/*" />
-            </div>
-            <input type="text" class="serviceName" placeholder="SERVICE NAME" v-model="formData.serviceName" />
-            <textarea class="serviceDescription" placeholder="DESCRIPTION....."
-                v-model="formData.description"></textarea>
-            <input type="number" class="servicePrice" placeholder="PRICE" v-model="formData.price" />
-            <button type="submit" class="btn">Add</button>
-        </form>
-        <div v-html="Cross" class="cross" @click="closeModal"></div>
-    </div>
-</template>
 <script setup>
 import Img from '@/assets/svg/Img.svg?raw'
 import Cross from '@/assets/svg/Cross.svg?raw'
@@ -21,12 +5,14 @@ import Cross from '@/assets/svg/Cross.svg?raw'
 import { ref } from 'vue'
 import axios from 'axios'
 
-const formData = ref({
+const serviceData = ref({
     ImgFilePath: null,
     serviceName: '',
     description: '',
     price: null
 })
+
+const imageFile = ref(null)
 
 const imgPath = (event) => {
     const file = event.target.files[0]
@@ -35,19 +21,30 @@ const imgPath = (event) => {
         return
     }
 
+    imageFile.value = file 
     const reader = new FileReader()
     reader.readAsDataURL(file)
 
     reader.onload = () => {
-        formData.value.ImgFilePath = reader.result
+        serviceData.value.ImgFilePath = reader.result
     }
 }
 
 const submitForm = async () => {
+    const formData = new FormData()
+
+    formData.append('serviceName', serviceData.value.serviceName)
+    formData.append('description', serviceData.value.description)
+    formData.append('price', serviceData.value.price)
+
+    if (imageFile.value) {
+        formData.append('image', imageFile.value)
+    }
+
     try {
-        const response = await axios.post('http://127.0.0.1:5000/admin/service', formData.value, {
+        const response = await axios.post('http://127.0.0.1:5000/admin/service', formData, {
             headers: {
-                'Content-Type': 'application/json'
+                'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
             }
         })
         console.log(response.data)
@@ -64,7 +61,7 @@ const { showModal } = defineProps({
 const emit = defineEmits(['closeModal'])
 
 function closeModal() {
-    formData.value = {
+    serviceData.value = {
         ImgFilePath: null,
         serviceName: '',
         description: '',
@@ -73,6 +70,27 @@ function closeModal() {
     emit('closeModal')
 }
 </script>
+
+<template>
+    <div v-if="showModal" class="modal">
+        <form @submit.prevent="submitForm">
+            <div class="serviceImg">
+                <input type="file" class="ImgFilePath" @change="imgPath" accept="image/*" />
+                <img v-if="serviceData.ImgFilePath" 
+                :src="serviceData.ImgFilePath" 
+                alt="Image Preview" 
+                class="ImagePreview"/>
+                <p v-else v-html="Img" class="ImagePreview"></p>
+            </div>
+            <input type="text" class="serviceName" placeholder="SERVICE NAME" v-model="serviceData.serviceName" />
+            <textarea class="serviceDescription" placeholder="DESCRIPTION....."
+                v-model="serviceData.description"></textarea>
+            <input type="number" class="servicePrice" placeholder="PRICE" v-model="serviceData.price" />
+            <button type="submit" class="btn">Add</button>
+        </form>
+        <div v-html="Cross" class="cross" @click="closeModal"></div>
+    </div>
+</template>
 
 
 <style scoped>
@@ -90,6 +108,12 @@ function closeModal() {
     justify-content: center;
     align-items: center;
     z-index: 10000;
+}
+
+.ImagePreview {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
 }
 
 .serviceImg {

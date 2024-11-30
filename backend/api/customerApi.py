@@ -1,8 +1,9 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, current_app
+from werkzeug.utils import secure_filename
 from sqlalchemy import func 
 
-from models import Customer, Services, ServiceImg,ServiceRequest,Professional,ServiceReview, db 
-from . import bcrypt,custom_jwt_required,redis_client
+from models import Customer,CustomerImg, Services, ServiceImg,ServiceRequest,Professional,ServiceReview, db 
+from . import bcrypt,custom_jwt_required,redis_client,get_token_expiration_time
 from datetime import datetime, timedelta
 import json
 import os
@@ -40,12 +41,19 @@ def signup():
 def home():
     try:
         user = request.user
-        founduser = Customer.query.filter_by(username = user).first()
+        founduser = Customer.query.filter_by(username=user).first()
         if founduser:
             cached_key = f'customer:{founduser.id}:details'
             cached_data = redis_client.get(cached_key)
             if cached_data:
                 return jsonify(json.loads(cached_data)), 200
+
+            # Fetch image details
+            customer_image = CustomerImg.query.filter_by(Customer_id=founduser.id).first()
+            if customer_image:
+                image_name = f'{customer_image.name}'
+            else:
+                image_name = None
 
             # customer data
             customer = {
@@ -55,13 +63,16 @@ def home():
                 'username': founduser.username,
                 'contact': founduser.contact,
                 'pincode': founduser.pincode,
-                'address': founduser.Address
+                'address': founduser.Address,
+                'image_name': image_name,  
             }
+
             # response data
             response = {
                 'customer': customer,
             }
-            
+
+            # Cache the response
             redis_client.setex(cached_key, timedelta(minutes=15), json.dumps(response))
             return jsonify(response), 200
 
@@ -70,6 +81,7 @@ def home():
 
     except Exception as e:
         return jsonify({'message': f'An error occurred: {str(e)}'}), 500
+
 
 
 # ******************************Customer PROFILE API****************************************
@@ -87,6 +99,12 @@ def profile():
             if cached_data:
                 return jsonify(json.loads(cached_data)), 200
             
+            image = CustomerImg.query.filter_by(Customer_id=founduser.id).first()
+            if image:
+                image_name = f'{image.name}'
+            else:
+                image_name = None
+            
             customer = {
                 'id': founduser.id,
                 'password': '',
@@ -94,7 +112,8 @@ def profile():
                 'username': founduser.username,
                 'contact': founduser.contact,
                 'pincode': founduser.pincode,
-                'address': founduser.Address
+                'address': founduser.Address,
+                'image_name': image_name
             }
             # response data
             response = {
@@ -114,23 +133,68 @@ def profile():
 @custom_jwt_required
 def updateProfile():
     user = request.user
-    founduser = Customer.query.filter_by(username = user).first()
-    if founduser:    
-        data = request.get_json()
-        password = bcrypt.generate_password_hash(data['password'])
+    founduser = Customer.query.filter_by(username=user).first()
+    if not founduser:
+        return jsonify({'message': 'User not found'}), 404
+    
+    data = request.form
+    try:
+        if 'password' in data and data['password']:
+            password = bcrypt.generate_password_hash(data['password'])
+            founduser.password = password
+        
         founduser.username = data['username']
         founduser.email = data['email']
-        founduser.password = password
         founduser.contact = data['contact']
         founduser.pincode = data['pincode']
         founduser.Address = data['address']
+
+        # Image Handling
+        if 'image' in request.files:
+            image_file = request.files['image']
+            
+            if image_file.filename:
+                image_filename = secure_filename(f'Customer_{founduser.id}.jpg')
+                
+                # Create the directory if it doesn't exist
+                if not os.path.exists(current_app.config['CUSTOMER_IMAGE_FOLDER']):
+                    os.makedirs(current_app.config['CUSTOMER_IMAGE_FOLDER'])
+                
+                # Check file type
+                ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+                if image_file.mimetype.split('/')[-1].lower() not in ALLOWED_EXTENSIONS:
+                    return jsonify({'message': 'Invalid file type'}), 400
+
+                # Delete existing image
+                existing_image = CustomerImg.query.filter_by(Customer_id=founduser.id).first()
+                if existing_image:
+                    try:
+                        os.remove(existing_image.filepath)
+                    except OSError:
+                        pass
+                    db.session.delete(existing_image)
+
+                # Save new image
+                image_filepath = os.path.join(current_app.config['CUSTOMER_IMAGE_FOLDER'], image_filename)
+                image_file.save(image_filepath)
+                
+                # Save the new image in the database
+                new_image = CustomerImg(
+                    name=image_filename,
+                    filepath=image_filepath,
+                    mimetype=image_file.mimetype,
+                    Customer_id=founduser.id
+                )
+                db.session.add(new_image)
         db.session.commit()
-        
+
         redis_client.delete(f'customer:{founduser.id}:details')
         redis_client.delete('admin:customers:all')
         return jsonify({'message': 'Profile updated successfully'}), 200
-    else:
-        return jsonify({'message': 'User not found'}), 404  
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': 'An error occurred', 'error': str(e)}), 500  
 
 # ******************************Customer SERVICE API****************************************
 
@@ -147,11 +211,13 @@ def services():
         services = Services.query.all()
         response = []
         for service in services:
+            image = ServiceImg.query.filter_by(Service_id=service.id).first()
             response.append({
                 'id': service.id,
                 'name': service.serviceName,
                 'description': service.description,
-                'price': service.price
+                'price': service.price,
+                'image_name': image.name if image else None
             })
         
         redis_client.setex(cached_key, timedelta(minutes=15), json.dumps(response))
@@ -370,9 +436,12 @@ def serviceReview(booking_id):
             db.session.add(review)
             db.session.commit()
             
-            redis.delete(f'customer:{founduser.id}:service:bookings')
-            redis.delete(f'professional:{booking.professionalId}:service:requests:history')
-            redis.delete(f'customer:professional:{booking.professionalId}:service:reviews')
+            #updating professional rating
+            update_professional_rating(booking.professionalId)
+            
+            redis_client.delete(f'customer:{founduser.id}:service:bookings')
+            redis_client.delete(f'professional:{booking.professionalId}:service:requests:history')
+            redis_client.delete(f'customer:professional:{booking.professionalId}:service:reviews')
             
             return jsonify({'message': 'Review created successfully'}), 201
         else:
@@ -421,7 +490,10 @@ def updateServiceReview(booking_id):
             review.review = data['review']
             db.session.commit()
             
-            redis_client.delete('customer:service:bookings')
+            #updating professional rating
+            update_professional_rating(review.professionalId)
+            
+            redis_client.delete(f'customer:{founduser.id}:service:bookings')
             redis_client.delete(f'professional:{review.professionalId}:service:requests:history')
             redis_client.delete(f'customer:professional:{review.professionalId}:service:reviews')
             
@@ -445,7 +517,10 @@ def deleteServiceReview(booking_id):
             service_request.reviewed = 'no'
             db.session.commit()
             
-            redis_client.delete('customer:service:bookings')
+            #updating professional rating
+            update_professional_rating(review.professionalId)
+            
+            redis_client.delete(f'customer:{founduser.id}:service:bookings')
             redis_client.delete(f'professional:{review.professionalId}:service:requests:history')
             redis_client.delete(f'customer:professional:{review.professionalId}:service:reviews')
             return jsonify({'message': 'Review deleted successfully'}), 200
@@ -455,6 +530,22 @@ def deleteServiceReview(booking_id):
         redis_delete('customer:service:bookings')
         return jsonify({'message': 'User not found'}), 404
     
+    
+# ******************************************************************************
+#  update professional rating
+
+def update_professional_rating(professional_id):
+    avg_rating = db.session.query(func.avg(ServiceReview.rating)).filter(
+        ServiceReview.professionalId == professional_id
+    ).scalar()
+    
+    professional = Professional.query.get(professional_id)
+    if professional:
+        professional.rating = avg_rating if avg_rating else 0
+        db.session.commit()
+#******************************************************************************
+
+
 
 # ***************************************** Customer Statistics Api *************************************
 
@@ -501,3 +592,38 @@ def getStatistics():
         
     except Exception as e:
         return jsonify({'message': f'An error occurred: {str(e)}'}), 500
+
+# ***************************************** Logout Api *************************************
+
+@customerApi.route('/logout', methods=['POST'])
+@custom_jwt_required
+def logout():
+    try:
+        user = request.user
+        founduser = Customer.query.filter_by(username=user).first()
+        
+        if founduser:
+            redis_client.delete(f'customer:{founduser.id}:details')
+            redis_client.delete(f'customer:{founduser.id}:service:bookings')
+            redis_client.delete(f'customer:{founduser.id}:service:reviews')
+        
+        authorization_header = request.headers.get('Authorization')
+        if not authorization_header or not authorization_header.startswith('Bearer '):
+            return jsonify({'message': 'Authorization header is missing or invalid'}), 400
+        
+        token = authorization_header.split(' ')[1]
+        if token:
+            expiration_time = get_token_expiration_time(token)  
+            redis_client.setex(f'blacklisted_token:{token}', expiration_time, 'blacklisted')
+
+            return jsonify({'message': 'Logout successful'}), 200
+
+        return jsonify({'message': 'Token not found'}), 400
+
+    except Exception as e:
+        current_app.logger.error(f"Error during logout: {str(e)}")
+        return jsonify({'message': 'Internal server error'}), 500
+    
+    
+    
+

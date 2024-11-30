@@ -124,13 +124,22 @@ const router = createRouter({
 });
 
 router.beforeEach((to, from, next) => {
-  const token = localStorage.getItem('token');
-  const userRole = localStorage.getItem('user_role');
+  const adminToken = localStorage.getItem('adminToken');
+  const professionalToken = localStorage.getItem('professionalToken');
+  const customerToken = localStorage.getItem('customerToken');
+
+  // Map tokens based on roles
+  const roleTokenMap = {
+    admin: adminToken,
+    professional: professionalToken,
+    customer: customerToken,
+  };
+
+  const userRole = to.meta.role; // Role required by the route
 
   if (to.matched.some(record => record.meta.requiresAuth)) {
-    if (!token) {
-      next({ path: '/' });
-    } else if (to.meta.role && to.meta.role !== userRole) {
+    if (!userRole || !roleTokenMap[userRole]) {
+      // Redirect to login if no role or valid token for role
       next({ path: '/' });
     } else {
       next();
@@ -139,5 +148,6 @@ router.beforeEach((to, from, next) => {
     next();
   }
 });
+
 
 export default router;

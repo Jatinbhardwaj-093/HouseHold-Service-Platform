@@ -3,7 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
 import Search from '@/assets/svg/Search.svg?raw'
 
-const token = localStorage.getItem('token')
+const token = localStorage.getItem('adminToken')
 
 // Fetch customers
 const customers = ref([])
@@ -39,9 +39,9 @@ const flagCustomer = async (customer) => {
             }
         )
         if (customer.flag == 'no') {
-            alert('Customer flagged successfully')
+            addNotification('Customer ' + customer.username + ' flagged successfully!',3000)
         } else {
-            alert('Customer unflagged successfully')
+            addNotification('Customer ' + customer.username + ' unflagged successfully!',3000)
         }
         
         await fetchCustomers() 
@@ -51,7 +51,7 @@ const flagCustomer = async (customer) => {
 }
 
 // Delete customer and reload data
-const deleteCustomer = async (customerId) => {
+const deleteCustomer = async (customerId,customer_name) => {
     try {
         await axios.delete(`http://127.0.0.1:5000/admin/customer/${customerId}`, {
             headers: {
@@ -59,10 +59,10 @@ const deleteCustomer = async (customerId) => {
                 'Content-Type': 'application/json'
             }
         })
-        alert('Customer deleted successfully')
         await fetchCustomers() 
+        addNotification('Customer ' + customer_name + ' deleted successfully!',3000)
     } catch (err) {
-        console.error('Failed to delete customer:', err)
+        addNotification('Failed to delete' + customer_name + '. Please try again.', 5000)
     }
 }
 
@@ -76,6 +76,14 @@ const filteredCustomers = computed(() => {
         : customers.value
 })
 
+//Notification
+import NotificationModal from '../NotificationModal.vue'
+
+const notifications = ref([])
+
+const addNotification = (message, duration) => {
+    notifications.value.push({ message, duration })
+}
 </script>
 
 <template>
@@ -113,12 +121,18 @@ const filteredCustomers = computed(() => {
                             <button @click="flagCustomer(customer)" v-if="customer.flag == 'no' ">Flag</button>
                             <button @click="flagCustomer(customer)" v-else>Unflag</button>
                         </td>
-                        <td><button @click="deleteCustomer(customer.id)">Delete</button></td>
+                        <td><button @click="deleteCustomer(customer.id, customer.username)">Delete</button></td>
                     </tr>
                 </tbody>
             </table>
             <img v-else class="emptyMessage" src="@/assets/images/empty-box.png" alt="No customers found">
         </div>
+        <NotificationModal 
+        v-for="(notification, index) in notifications" 
+        :key="index" 
+        :message="notification.message" 
+        :duration="notification.duration" 
+        @close="notifications.splice(index, 1)"/>
     </div>
 </template>
 

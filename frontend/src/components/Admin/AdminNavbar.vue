@@ -1,5 +1,24 @@
 <script setup>
 import Logout from '@/assets/svg/Logout.svg?raw';
+import { useRouter } from 'vue-router';
+import axios from 'axios';
+
+const router = useRouter()
+//Logout
+const logout = async () => {
+    try {
+        await axios.post('http://127.0.0.1:5000/admin/logout',{},{
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem('adminToken')}`
+            }
+        });
+    } catch (error) {
+        console.error('Error during logout:', error);
+    } finally {
+        localStorage.removeItem('adminToken');
+        router.push({ path: '/login' });
+    }
+};
 
 </script>
 
@@ -11,8 +30,8 @@ import Logout from '@/assets/svg/Logout.svg?raw';
         <div ><router-link class="professional" :to="{ name: 'professional-detail' }">Professional</router-link></div>
         <div><router-link class="customer" :to="{name: 'customer-detail'}">Customer</router-link></div>
         <div><router-link class="ongoing" :to="{name: 'ongoing-service'}">Ongoing Services</router-link></div>
-        <div class="Statistics">Statistics</div>
-        <div v-html="Logout" class="logout"></div>
+        <div><router-link class="Statistics" :to="{name: 'admin-statistics'}">Statistics </router-link></div>
+        <div v-html="Logout" class="logout" @click="logout"></div>
     </div>
     </div>
 </template>

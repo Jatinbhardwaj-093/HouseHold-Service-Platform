@@ -20,9 +20,10 @@ defineProps({
     chartOptions: {
         type: Object,
         required: false,
-        default: () => ({ responsive: true, maintainAspectRatio: false })
+        default: () => ({ responsive: true, maintainAspectRatio: false }),
     }
 })
+
 </script>
 
 <style scoped>

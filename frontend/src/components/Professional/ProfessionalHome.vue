@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
 
-const token = localStorage.getItem('token');
+const token = localStorage.getItem('professionalToken');
 const newRequests = ref([]);
 const ongoingRequests = ref([]);
 
@@ -40,8 +40,9 @@ const newRequestResponse = async (requestId, status) => {
             }
         )
         fetchbookings();
+        addNotification('Service '+ status + ' successfully!', 3000);
     } catch (error) {
-        console.error('Error occurred:', error.response ? error.response.data : error.message);
+        addNotification('Failed to update service status. Please try again.', 5000);
     }
 }
 
@@ -59,12 +60,21 @@ const markComplete = async (requestId) => {
             }
         )
         fetchbookings();
+        addNotification('Service marked completed successfully!', 3000);
     }
     catch (error) {
-        console.error('Error occurred:', error.response ? error.response.data : error.message);
+        addNotification('Failed to mark service as completed. Please try again.', 5000);
     }
 }
 
+//Notification
+import NotificationModal from '../NotificationModal.vue';
+
+const notifications = ref([])
+
+const addNotification = (message, duration) => {
+    notifications.value.push({ message, duration })
+}
 </script>
 
 
@@ -140,6 +150,12 @@ const markComplete = async (requestId) => {
             <img v-else class="emptyMessage" src="@/assets/images/empty-box.png" alt="No Data">
         </div>
     </div>
+    <!-- Notification Modal -->
+    <NotificationModal v-for="(notification, index) in notifications" :key="index" 
+    :message="notification.message" 
+    :duration="notification.duration" 
+    @close="notifications.splice(index, 1)" />
+
     </div>
 </template>
 
@@ -218,12 +234,13 @@ tr{
 background-color: #6A94FF;
 border: none;
 color: #f5f5dc;
-padding: 5px;
+padding: 7px 15px;
 border-radius: 5px;
 text-align: center;
+font-size: 1rem;
 }
 
-button {
+.acceptBtn,.rejectBtn {
     border: none;
     border-radius: 0.25rem;
     width: 5rem;

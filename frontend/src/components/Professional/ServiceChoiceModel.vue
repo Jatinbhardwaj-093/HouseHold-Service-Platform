@@ -25,12 +25,14 @@ const selectService = (service) => {
                     :key="service.id"
                     @click="selectService(service)"
                 >
-                    <img v-if="service.image" :src="service.image.filepath" alt="Service Image" />
-                    <div v-else class="serviceImgHolder">
-                        <p v-html="NoImg"></p>
+                    <div class="serviceImageHolder">
+                        <img v-if="service.image_name" 
+                        :src="`http://127.0.0.1:5000/static/services_imgs/${service.image_name}`" 
+                        alt="Service Image" 
+                        class="imagePreview" />
+                        <p v-else v-html="NoImg" class="imagePreview"></p>
                     </div>
                     <p class="serviceName">{{ service.name }}</p>
-                    <p class="price">₹ {{ service.price }}</p>
                 </div>
             </div>
         </div>
@@ -83,12 +85,11 @@ h2 {
 
 .block {
     background-color: black;
-    width: 100px;
-    height: 100px;
+    width: 110px;
+    height: 110px;
     border-radius: 0.5rem;
     box-shadow: 2px 5px 20px rgba(0, 0, 0, 0.6);
-    padding-top: 5px;
-    padding-left: 10px;
+    padding: 10px;
     display: flex;
     flex-direction: column;
     align-items: start;
@@ -100,22 +101,23 @@ h2 {
     color: #fff;
     font-size: 1rem;
     font-weight: bolder;
-    font-style: italic;
+    white-space: nowrap;
+    overflow: hidden;
 }
 
-.price {
-    color: #10b80d;
-    font-size: 0.7rem;
-    
-}
-
-img, .serviceImgHolder {
-    margin-bottom: 4px;
-    margin-left: 20px;
-    border-radius: 5px;
-
-    height: 40px;
-    width: 40px;
+.serviceImageHolder {
+    margin: auto;
+    height: 60px;
+    width: 80px;
     background-color: bisque;
+    border-radius: 0.5rem;
+    padding: 2px;
+}
+
+.imagePreview {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    overflow: hidden;
 }
 </style>

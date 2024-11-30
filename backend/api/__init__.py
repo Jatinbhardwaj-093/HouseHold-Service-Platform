@@ -62,3 +62,21 @@ def custom_jwt_required(f):
 
     return decorated_function
 
+# expiration time of token for blacklist in logout
+def get_token_expiration_time(token: str):
+    try:
+        decoded_token = jwt.decode(token, options={"verify_signature": False})
+        exp_time = decoded_token.get('exp')
+    
+        if exp_time:
+            return exp_time
+        
+        raise ValueError("Expiration time not found in token.")
+    
+    except jwt.ExpiredSignatureError:
+        raise ValueError("Token has expired.")
+    except jwt.DecodeError:
+        raise ValueError("Error decoding the token.")
+    except Exception as e:
+        raise ValueError(f"Error retrieving expiration time: {str(e)}")
+

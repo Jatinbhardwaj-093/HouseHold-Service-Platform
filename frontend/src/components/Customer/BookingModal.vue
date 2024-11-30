@@ -1,6 +1,6 @@
 <script setup>
 import axios from 'axios'
-import { defineProps, defineEmits, ref } from 'vue'
+import { ref } from 'vue'
 
 const props = defineProps({
     scheduleInfo: {
@@ -9,14 +9,15 @@ const props = defineProps({
     }
 })
 
-const emits = defineEmits(['close'])
-const token = localStorage.getItem('token')
+const emits = defineEmits(['close', 'notification', 'error', 'Reschedule_notification', 'Reschedule_error'])
+const token = localStorage.getItem('customerToken')
 
 const serviceDate = ref('')
 
 const servicebooking = async () => {
     try {
         if (props.scheduleInfo.action === 'createBooking') {
+            try {
             await axios.post(
                 `http://127.0.0.1:5000/customer/service/${props.scheduleInfo.serviceId}/booking`,
                 {
@@ -30,20 +31,30 @@ const servicebooking = async () => {
                     }
                 }
             )
+            emits('notification')
+            } catch (error) {
+                emits('error')
+            }
         } else if (props.scheduleInfo.action === 'updateBooking') {
-            await axios.put(
-                `http://127.0.0.1:5000/customer/service/booking/${props.scheduleInfo.bookingId}/reschedule`,
-                {
-                    serviceDate: serviceDate.value
-                },
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        'Content-Type': 'application/json'
+            try {
+                
+                await axios.put(
+                    `http://127.0.0.1:5000/customer/service/booking/${props.scheduleInfo.bookingId}/reschedule`,
+                    {
+                        serviceDate: serviceDate.value
+                    },
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
                     }
-                }
-            )
-        }
+                )
+                emits('Reschedule_notification')
+            } catch (error) {
+                emits('Reschedule_error')
+            }
+            }
         emits('close')
     } catch (error) {
         console.error('Error occurred:', error.response ? error.response.data : error.message)

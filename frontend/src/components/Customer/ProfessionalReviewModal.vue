@@ -7,7 +7,7 @@ const { professionalId } = defineProps({
     professionalId: Number
 })
 
-const token = localStorage.getItem('token')
+const token = localStorage.getItem('customerToken')
 const Data = ref([])
 
 onMounted(() => {

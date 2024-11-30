@@ -14,7 +14,7 @@ import { useRoute, useRouter } from 'vue-router'
 const route = useRoute()
 const router = useRouter()
 const serviceId = route.params.serviceId
-const token = localStorage.getItem('token')
+const token = localStorage.getItem('customerToken')
 
 const serviceData = ref({})
 const professionalData = ref([])
@@ -92,6 +92,14 @@ const ReviewsModal = (professionalId) => {
     professionaReviewsId.value = professionalId
     showModalReview.value = true
 }
+
+//Notification 
+import NotificationModal from '../NotificationModal.vue'
+const notifications = ref([])
+
+const addNotification = (message, duration) => {
+    notifications.value.push({ message, duration })
+}
 </script>
 
 <template>
@@ -152,6 +160,8 @@ const ReviewsModal = (professionalId) => {
                                 v-if="showModal[professional.professional_id]"
                                 :scheduleInfo="info"
                                 @close="showModal[professional.professional_id] = !showModal[professional.professional_id]"
+                                @notification="addNotification('Service booked successfully!', 3000)"
+                                @error="addNotification('Error booking service', 3000)"
                                 class="bookingModal"
                             />
                         </td>
@@ -168,10 +178,11 @@ const ReviewsModal = (professionalId) => {
             </table>
             <div class="noPincodeService" v-else>
                 <img class="noLocationImage" src="@/assets/images/location.png" alt="No Location Image">
-                <p>Unfortunately! No Service available for this pincode.</p>
+                <p>Unfortunately! No Service available in your pincode.</p>
             </div>
         </div>
 
+        <!-- Description Modal -->
         <ServiceDescriptionModal
             class="descriptionModal"
             v-if="showDescriptionModal"
@@ -179,11 +190,20 @@ const ReviewsModal = (professionalId) => {
             @close="showDescriptionModal = !showDescriptionModal"
         />
 
+        <!-- Review Modal -->
         <ProfessionalReviewModal
             class="reviewModal"
             v-if="showModalReview"
             :professionalId="professionaReviewsId"
             @close="showModalReview = !showModalReview"
+        />
+
+        <!-- Notification Modal -->
+        <NotificationModal
+            v-for="(notification, index) in notifications"
+            :key="index"
+            :message="notification.message"
+            :duration="notification.duration"
         />
     </div>
 </template>

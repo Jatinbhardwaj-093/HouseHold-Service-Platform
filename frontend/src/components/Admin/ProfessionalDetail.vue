@@ -2,10 +2,11 @@
 import { onMounted, ref, computed } from 'vue'
 import axios from 'axios'
 import Search from '@/assets/svg/Search.svg?raw'
+import Verification from '@/assets/svg/Verification.svg?raw'
 
 const detailsRef = ref([])
+const token = localStorage.getItem('adminToken')
 
-// Listen for clicks outside of details elements to close them
 onMounted(() => {
     document.addEventListener('click', (event) => {
         detailsRef.value.forEach((detail) => {
@@ -16,92 +17,136 @@ onMounted(() => {
     })
 })
 
-// Token for authorization
-const token = localStorage.getItem('token')
-
-// Fetch professionals data
 const professional = ref([])
 const fetchProfessional = async () => {
     try {
         const response = await axios.get(`http://127.0.0.1:5000/admin/professional`, {
             headers: {
                 Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            },
-        });
-        professional.value = response.data;
+                'Content-Type': 'application/json'
+            }
+        })
+        professional.value = response.data
     } catch (error) {
-        console.error('Failed to fetch professional:', error);
+        addNotification('Failed to fetch professionals. Please try again.', 5000)
     }
 }
 
-// Search functionality
-const searchTerm = ref('') // Reactive variable for search input
+// Search and filter state
+const searchTerm = ref('')
+const showUnverifiedOnly = ref(false)
+
+// Computed property for filtering professionals
 const filteredProfessionals = computed(() => {
-    if (!searchTerm.value) return professional.value
-    return professional.value.filter(p => 
-        p.username.toLowerCase().includes(searchTerm.value.toLowerCase())
-    )
+    let result = professional.value
+
+    if (showUnverifiedOnly.value) {
+        result = result.filter((p) => p.verify === 'no')
+    }
+
+    if (searchTerm.value) {
+        result = result.filter((p) =>
+            p.username.toLowerCase().includes(searchTerm.value.toLowerCase())
+        )
+    }
+
+    return result
 })
+
+// Toggle unverified filter
+const toggleUnverifiedFilter = () => {
+    showUnverifiedOnly.value = !showUnverifiedOnly.value
+}
+
+// Flag, verify, and delete operations
+const flagProfessional = async (professional_id,professional_name,flag_condition) => {
+    try {
+        await axios.put(
+            `http://127.0.0.1:5000/admin/professional/${professional_id}/flag`,
+            {},
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        )
+        fetchProfessional()
+        if (flag_condition == 'no') {
+            addNotification(`Professional ${professional_name} flagged successfully!`)
+        } else {
+            addNotification(`Professional ${professional_name} unflagged successfully!`)
+        }
+    } catch (error) {
+        addNotification('Failed to flag professional. Please try again.', 5000)
+    }
+}
+
+const verifyProfessional = async (professional_id,professional_name) => {
+    try {
+        await axios.put(
+            `http://127.0.0.1:5000/admin/professional/${professional_id}/verify`,
+            {},
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        )
+        fetchProfessional()
+        addNotification(`Professional ${professional_name} verified successfully!`)
+    } catch (error) {
+        addNotification('Failed to verify professional. Please try again.', 5000)
+    }
+}
+
+const deleteProfessional = async (professional_id,professional_name) => {
+    try {
+        await axios.delete(`http://127.0.0.1:5000/admin/professional/${professional_id}/delete`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        })
+        fetchProfessional()
+        addNotification(`Professional ${professional_name} deleted successfully!`)
+    } catch (error) {
+        addNotification('Failed to delete professional. Please try again.', 5000)
+    }
+}
 
 onMounted(() => {
     fetchProfessional()
 })
 
-// Flag, verify, and delete operations for professionals
-const flagProfessional = async (professional_id) => {
-    try {
-        await axios.put(`http://127.0.0.1:5000/admin/professional/${professional_id}/flag`, {}, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            },
-        });
-        fetchProfessional()
-    } catch (error) {
-        console.error('Failed to flag professional:', error);
-    }
-}
+//Notification
+import NotificationModal from '../NotificationModal.vue'
 
-const verifyProfessional = async (professional_id) => {
-    try {
-        await axios.put(`http://127.0.0.1:5000/admin/professional/${professional_id}/verify`, {}, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            },
-        });
-        fetchProfessional()
-    } catch (error) {
-        console.error('Failed to verify professional:', error);
-    }
-}
+const notifications = ref([])
 
-const deleteProfessional = async (professional_id) => {
-    try {
-        await axios.delete(`http://127.0.0.1:5000/admin/professional/${professional_id}/delete`, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            },
-        });
-        fetchProfessional()
-    } catch (error) {
-        console.error('Failed to delete professional:', error);
-    }
+const addNotification = (message, duration = 3000) => {
+    notifications.value.push({ message, duration })
 }
 </script>
 
 <template>
     <div>
         <div class="container">
-            <div class="searchBar">
-                <input 
-                    type="text" 
-                    class="search" 
-                    placeholder="Search by professional name" 
-                    v-model="searchTerm" />
-                <p class="searchBtn" v-html="Search"></p>
+            <div class="header">
+                <div class="searchBar">
+                    <input
+                        type="text"
+                        class="search"
+                        placeholder="Search by professional name"
+                        v-model="searchTerm"
+                    />
+                    <p class="searchBtn" v-html="Search"></p>
+                </div>
+                <div @click="toggleUnverifiedFilter" class="btn">
+                    <p v-html="Verification" class="VerificationBtn"></p>
+                    <p>Verify</p>
+                </div>
             </div>
             <table v-if="filteredProfessionals.length > 0">
                 <thead>
@@ -135,25 +180,38 @@ const deleteProfessional = async (professional_id) => {
                         <td v-else-if="prof.flag == 'yes'">Flagged</td>
                         <td v-else>OK</td>
                         <td v-if="prof.verify == 'no'">
-                            <button @click="verifyProfessional(prof.professionalId)">Verify</button>
+                            <button @click="verifyProfessional(prof.professionalId, prof.username)">Verify</button>
                         </td>
                         <td v-else style="color: rgb(82, 149, 231); font-weight: 600">Verified</td>
                         <td v-if="prof.verify == 'yes'">
-                            <button @click="flagProfessional(prof.professionalId)">
+                            <button @click="flagProfessional(prof.professionalId, prof.username, prof.flag)">
                                 {{ prof.flag == 'no' ? 'Flag' : 'Unflag' }}
                             </button>
                         </td>
+                        <td v-else></td>
                         <td>
-                            <button @click="deleteProfessional(prof.professionalId)">Delete</button>
+                            <button @click="deleteProfessional(prof.professionalId, prof.username)">Delete</button>
                         </td>
                     </tr>
                 </tbody>
             </table>
-            <img class="emptyMessage" v-else src="@/assets/images/empty-box.png" alt="No professionals found">
+            <img
+                class="emptyMessage"
+                v-else
+                src="@/assets/images/empty-box.png"
+                alt="No professionals found"
+            />
         </div>
+        <NotificationModal
+            class="notification-modal"
+            v-for="(notification, index) in notifications"
+            :key="index"
+            :message="notification.message"
+            :duration="notification.duration"
+            @close="notifications.splice(index, 1)"
+        />
     </div>
 </template>
-
 
 <style scoped>
 .container {
@@ -163,8 +221,15 @@ const deleteProfessional = async (professional_id) => {
     border-radius: 1rem;
     box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.6);
     background-color: #3c3c3c;
-    overflow:auto;
+    overflow: auto;
     scrollbar-width: thin;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 2rem;
 }
 
 .searchBar {
@@ -174,7 +239,6 @@ const deleteProfessional = async (professional_id) => {
     box-shadow: 5px 5px 10px rgb(0, 0, 0);
     border-radius: 0.5rem;
     padding: 0.5rem;
-    margin: 2rem;
     width: min(100%, 750px);
 }
 
@@ -189,7 +253,8 @@ input {
     padding-left: 1rem;
 }
 
-.searchBtn {
+.searchBtn,
+.VerificationBtn {
     height: 35px;
     width: 35px;
 }
@@ -252,7 +317,21 @@ button {
     text-align: center;
 }
 
-.emptyMessage{
+.btn {
+    display: flex;
+    justify-content: space-evenly;
+    align-items: center;
+    width: 10rem;
+    font-size: 1.5rem;
+    background-color: hsla(210, 6%, 7%, 0.85);
+    color: #f5f5dc;
+    border: none;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    cursor: pointer;
+}
+
+.emptyMessage {
     height: 250px;
     width: 250px;
     display: block;

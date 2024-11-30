@@ -1,11 +1,15 @@
 <template>
     <div v-if="showServiceModal" class="modal">
         <div v-if="serviceData">
-            <img
-                v-if="serviceData.image"
-                :src="serviceData.image.filepath"
-                :alt="serviceData.image.name"
-            />
+            <div class="serviceImageHolder">
+                <img
+                    v-if="serviceData.image_name"
+                    :src=" 'http://127.0.0.1:5000/static/services_imgs/' + serviceData.image_name"
+                    :alt="serviceData.image_name"
+                class="imagePreview"
+                />
+                <p v-else v-html="Img" lass="imagePreview"></p>
+            </div>
             <p class="serviceName">{{ serviceData.service_name }}</p>
             <p class="description">{{ serviceData.description }}</p>
             <p class ="price">₹ {{ serviceData.price }}</p>
@@ -17,6 +21,7 @@
 
 <script setup>
 import Cross from '@/assets/svg/Cross.svg?raw';
+import Img from '@/assets/svg/Img.svg?raw'
 
 const { showServiceModal, serviceData } = defineProps({
     showServiceModal: Boolean,
@@ -48,10 +53,25 @@ function closeServiceModal() {
     z-index: 10000;
 }
 
+.serviceImageHolder {
+    margin: auto;
+    height: 130px;
+    width: 130px;
+    background-color: rgb(255, 255, 255);
+    border-radius: 1rem;
+    margin-bottom: 1rem;
+    padding: 0.7rem;
+
+}
+
+.imagePreview {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
 .serviceName {
     color: #ff5c01;
-    text-align: center;
-    font-size: 1.5rem;
+    font-size: 2rem;
     margin-bottom: 1rem;
 }
 
@@ -61,10 +81,10 @@ function closeServiceModal() {
 }
 
 .price {
-    color: green;
+    color: rgb(6, 176, 6);
     font-weight: bolder;
-    font-size: 1rem;
-    margin-top: 0.7rem;
+    font-size: 1.25rem;
+    margin-top: 1rem;
 }
 
 .cross {

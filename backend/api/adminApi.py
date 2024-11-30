@@ -1,13 +1,13 @@
-from flask import Blueprint, jsonify, request, current_app
+from flask import Blueprint, jsonify, request, current_app, send_file
 from werkzeug.utils import secure_filename
-from models import Services, ServiceImg, Customer, Professional, ServiceRequest, ServiceReview, db
-from . import bcrypt, custom_jwt_required,redis_client
+from models import Admin,Services, ServiceImg, Customer, Professional, ServiceRequest, ServiceReview, db
+from . import bcrypt, custom_jwt_required,redis_client,get_token_expiration_time
 import os
-import base64
 from sqlalchemy import func
 from datetime import timedelta
 import json
-
+import csv
+import io
 adminApi = Blueprint('adminApi', __name__)
 
 # ******************* Admin Home Api ***************
@@ -31,7 +31,7 @@ def home():
                 'description': service.description,
                 'price': service.price,
                 'name': service.serviceName,
-                'image': img.filepath if img else None
+                'image_name': img.name if img else None
             })
         
         redis_client.setex(cache_key, timedelta(minutes=15), json.dumps(response))
@@ -47,7 +47,7 @@ def home():
 @adminApi.route('/service', methods=['POST'])
 @custom_jwt_required
 def create_service():
-    data = request.get_json()
+    data = request.form
     
     new_service = Services(
         serviceName=data['serviceName'],
@@ -55,26 +55,39 @@ def create_service():
         price=data['price']
     )
     db.session.add(new_service)
-    db.session.commit()
+    db.session.flush()
 
     if 'image' in request.files:
         image_file = request.files['image']
-        original_image_path = os.path.join(current_app.config['UPLOAD_FOLDER)'], image_file.filename)
-        compressed_image_path = os.path.join(current_app.config['UPLOAD_FOLDER)'], 'compressed_' + image_file.filename)
-
-        image_file.save(original_image_path)  
-        compress_image(original_image_path, compressed_image_path) 
         
-        service_image = ServiceImg(
-            name=image_file.filename,
-            filepath=compressed_image_path,
-            mimetype=image_file.content_type,
-            Service_id=new_service.id
-        )
-        db.session.add(service_image)
-        db.session.commit()
+        if image_file.filename:
+            image_filename = secure_filename(f'Service_{new_service.id}.jpg')
+            
+            # create the directory if it doesn't exist
+            if not os.path.exists(current_app.config['SERVICE_IMAGE_FOLDER']):
+                os.makedirs(current_app.config['SERVICE_IMAGE_FOLDER'])
+                
+            # Check file type
+                ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+                if image_file.mimetype.split('/')[-1].lower() not in ALLOWED_EXTENSIONS:
+                    return jsonify({'message': 'Invalid file type'}), 400
+
+            # Save the new image
+            original_image_path = os.path.join(current_app.config['SERVICE_IMAGE_FOLDER'], image_filename)
+            image_file.save(original_image_path)  
+            
+            #Save the image in database
+            service_image = ServiceImg(
+                name=image_filename,
+                filepath=original_image_path,
+                mimetype=image_file.mimetype,
+                Service_id=new_service.id
+            )
+            db.session.add(service_image)
+    db.session.commit()
     
     redis_client.delete('admin:services:all')
+    redis_client.delete(f'customer:services')
     return jsonify({'message': 'Service created successfully', 'service_id': new_service.id}), 201
 
 #Read
@@ -99,11 +112,7 @@ def read_service(service_id):
         'service_name': service.serviceName,
         'description': service.description,
         'price': service.price,
-        'image': {
-            'name': service_img.name if service_img else None,
-            'filepath': service_img.filepath if service_img else None,
-            'mimetype': service_img.mimetype if service_img else None
-        }
+        'image_name': service_img.name if service_img else None
     }
     
     redis_client.setex(cache_key, timedelta(minutes=15), json.dumps(service_data))
@@ -114,36 +123,62 @@ def read_service(service_id):
 @custom_jwt_required
 def edit_service(service_id):
     service = Services.query.filter_by(id=service_id).first()
-    
     if not service:
         return jsonify({'error': 'Service not found'}), 404
 
-    data = request.get_json()
+    data = request.form
+    try:
+        service.serviceName = data['service_name']
+        service.description = data['description']
+        service.price = data['price']
+        
+        # Image Handling
+        if 'image' in request.files:
+            image_file = request.files['image']
+            
+            if image_file.filename:
+                image_filename = secure_filename(f'Service_{service.id}.jpg')
+                
+                # Create the directory if it doesn't exist
+                if not os.path.exists(current_app.config['SERVICE_IMAGE_FOLDER']):
+                    os.makedirs(current_app.config['SERVICE_IMAGE_FOLDER'])
+                
+                # Check file type
+                ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+                if image_file.mimetype.split('/')[-1].lower() not in ALLOWED_EXTENSIONS:
+                    return jsonify({'message': 'Invalid file type'}), 400
+                
+                # Delete the previous image
+                service_img = ServiceImg.query.filter_by(Service_id=service.id).first()
+                if service_img:
+                    try:
+                        os.remove(service_img.filepath)
+                    except OSError:
+                        pass
+                    db.session.delete(service_img)
+                    
+                # Save the new image
+                original_image_path = os.path.join(current_app.config['SERVICE_IMAGE_FOLDER'], image_filename)
+                image_file.save(original_image_path)  
+                
+                #Save the image in database
+                service_image = ServiceImg(
+                    name=image_filename,
+                    filepath=original_image_path,
+                    mimetype=image_file.mimetype,
+                    Service_id=service.id
+                )
+                db.session.add(service_image)
+        db.session.commit()
 
-    service.serviceName = data['service_name']
-    service.description = data['description']
-    service.price = data['price']
+        redis_client.delete(f'admin:service:{service_id}')
+        redis_client.delete('admin:services:all')
+        redis_client.delete('customer:serivces')
+        return jsonify({'message': 'Service updated successfully'}), 200
 
-    if 'image' in request.files:
-        image = request.files['image']
-        existing_image = ServiceImg.query.filter_by(Service_id=service.id).first()
-        if existing_image:
-            os.remove(existing_image.filepath)  
-            db.session.delete(existing_image)
-
-        filename = secure_filename(image.filename)
-        filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
-        image.save(filepath)
-
-        new_image = ServiceImg(name=filename, filepath=filepath, mimetype=image.mimetype, Service_id=service.id)
-        db.session.add(new_image)
-
-    db.session.commit()
-    redis_client.delete(f'admin:service:{service_id}')
-    redis_client.delete('admin:services:all')
-    return jsonify({'message': 'Service updated successfully'}), 200
-
-
+    except Exception as e:
+        return jsonify({'message': f'An error occurred: {str(e)}'}), 500
+    
 #Delete
 @adminApi.route('/service/<int:service_id>', methods=['DELETE'])
 @custom_jwt_required
@@ -156,7 +191,7 @@ def delete_service(service_id):
     service_img = ServiceImg.query.filter_by(Service_id=service_id).first()
 
     if service_img:
-        image_path = os.path.join(current_app.config['UPLOAD_FOLDER'], service_img.filepath)
+        image_path = os.path.join(current_app.config['SERVICE_IMAGE_FOLDER'], service_img.filepath)
         if os.path.exists(image_path):
             os.remove(image_path) 
         db.session.delete(service_img)
@@ -166,6 +201,7 @@ def delete_service(service_id):
     
     redis_client.delete(f'admin:service:{service_id}')
     redis_client.delete('admin:services:all')
+    redis_client.delete('customer:serivces')
     return jsonify({'message': 'Service and associated image deleted successfully'}), 200
 
 
@@ -384,3 +420,89 @@ def statistics():
     }
     
     return jsonify(response), 200
+
+#******************* Admin CSV Api ***************
+@adminApi.route('/download-csv', methods=['GET'])
+@custom_jwt_required  # Ensure this is your valid JWT decorator
+def download_csv():
+    try:
+        # Query for completed service requests
+        completed_services = ServiceRequest.query.filter_by(professionalStatus='completed').all()
+
+        # Check if there are any completed services
+        if not completed_services:
+            return jsonify({'error': 'No completed services found.'}), 404
+
+        # Prepare CSV data using StringIO (use StringIO for text-based CSV writing)
+        output = io.StringIO()
+
+        # Create a CSV writer to write to the StringIO buffer
+        csv_writer = csv.DictWriter(output, fieldnames=[
+            'bookingId', 'customerName', 'professionalName', 'customerPincode', 
+            'professionalPincode', 'serviceName', 'serviceId', 'status', 
+            'requestDate', 'completionDate'
+        ])
+        
+        # Write header to the CSV
+        csv_writer.writeheader()
+
+        # Write rows for each completed service request
+        for service in completed_services:
+            csv_writer.writerow({
+                'bookingId': service.id,
+                'customerName': service.customer.username,
+                'professionalName': service.professional.username,
+                'customerPincode': service.customer.pincode,
+                'professionalPincode': service.professional.pincode,
+                'serviceName': service.service.serviceName,
+                'serviceId': service.serviceId,
+                'status': service.professionalStatus,
+                'requestDate': service.requestDate.isoformat(),
+                'completionDate': service.completionDate.isoformat() if service.completionDate else None
+            })
+
+        # Seek to the start of the StringIO buffer before sending it
+        output.seek(0)
+
+        # Return the CSV as an attachment (convert StringIO to BytesIO for sending as a file)
+        return send_file(io.BytesIO(output.getvalue().encode('utf-8')), mimetype='text/csv', as_attachment=True, download_name='completed_services.csv')
+
+    except Exception as e:
+        # Log the error for debugging (consider logging instead of printing in production)
+        print(f"Error generating CSV: {e}")
+
+        # Return a user-friendly error message
+        return jsonify({'error': 'An error occurred while generating the CSV file.'}), 500
+
+#******************* Logout Api ***************
+@adminApi.route('/logout', methods=['POST'])
+@custom_jwt_required
+def logout():
+    try:
+        user = request.user
+        founduser = Admin.query.filter_by(username=user).first()
+        
+        if founduser:
+            redis_client.delete(f'admin:details')
+            redis_client.delete(f'admin:customers:all')
+            redis_client.delete(f'admin:professionals:all')
+            redis_client.delete(f'admin:ongoing_service:all')
+        
+        authorization_header = request.headers.get('Authorization')
+        if not authorization_header or not authorization_header.startswith('Bearer '):
+            return jsonify({'message': 'Authorization header is missing or invalid'}), 400
+        
+        token = authorization_header.split(' ')[1]
+        if token:
+            expiration_time = get_token_expiration_time(token)
+            redis_client.setex(f'blacklisted_token:{token}', expiration_time, 'blacklisted')
+
+            return jsonify({'message': 'Logout successful'}), 200
+
+        return jsonify({'message': 'Token not found'}), 400
+
+    except Exception as e:
+        current_app.logger.error(f"Error during logout: {str(e)}")
+        return jsonify({'message': 'Internal server error'}), 500
+    
+            

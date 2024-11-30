@@ -6,7 +6,7 @@ import ReviewModal from './ReviewModal.vue';
 import BookingModal from './BookingModal.vue';
 import MenuDot from '@/assets/svg/MenuDot.svg?raw';
 
-const token = localStorage.getItem('token');
+const token = localStorage.getItem('customerToken');
 const bookings = ref([]);
 
 // Fetch bookings
@@ -51,13 +51,19 @@ const closeRescheduleModal = (bookingId) => {
 
 // Cancel Service Request
 const cancelBooking = async (bookingId) => {
-    await axios.delete(`http://127.0.0.1:5000/customer/service/booking/${bookingId}/delete`, {
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
+    try {
+        await axios.delete(`http://127.0.0.1:5000/customer/service/booking/${bookingId}/delete`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        addNotification('Service cancelled successfully!', 3000);
+        fetchBookings();
+            
+        } catch (error) {
+            addNotification('Failed to cancel service. Please try again.', 5000);
         }
-    });
-    fetchBookings();
 };
 
 // Marking service completed
@@ -75,8 +81,9 @@ const closeBooking = async (bookingId) => {
             }
         );
         fetchBookings();
+        addNotification('Service marked completed successfully!', 3000);
     } catch (error) {
-        console.error('Error occurred:', error.response ? error.response.data : error.message);
+        addNotification('Failed to mark service as completed. Please try again.', 5000);
     }
 };
 
@@ -126,15 +133,24 @@ const deleteReview = async (bookingId) => {
     try {
         await axios.delete(`http://127.0.0.1:5000/customer/service/${bookingId}/review/delete`, {
             headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             }
         });
-        alert('Review deleted successfully');
+        addNotification('Review deleted successfully!', 3000);
         fetchBookings();
     } catch (err) {
-        console.error(err.response ? err.response.data : err.message);
+        addNotification('Failed to delete review. Please try again.', 5000);
     }
+}
+
+// Notification
+import NotificationModal from '../NotificationModal.vue';
+
+const notifications = ref([]);
+
+const addNotification = (message, duration) => {
+    notifications.value.push({ message, duration });
 };
 </script>
 
@@ -174,7 +190,7 @@ const deleteReview = async (bookingId) => {
 
                         <!-- action button to mark service as completed -->
                         <td v-if="(booking.professionalStatus=='accepted' || booking.professionalStatus=='completed') 
-                            && !booking.customerStatus=='completed' ">
+                            && booking.customerStatus!='completed' ">
                             <button class="closeBtn" @click="closeBooking(booking.id)" type="submit">Close</button>
                         </td>
                         <td v-else-if="booking.customerStatus=='completed'">Completed</td>
@@ -195,14 +211,35 @@ const deleteReview = async (bookingId) => {
                                 <p v-if="booking.reviewed=='yes'" @click="handleOptionClick(booking.id,'editReview')">Edit Review</p>
                                 <p v-if="booking.reviewed=='yes'" @click="handleOptionClick(booking.id,'deleteReview')">Delete Review</p>
                             </div>
-                            <BookingModal v-if="reschedule[booking.id]" :scheduleInfo="info" @close="closeRescheduleModal(booking.id)" class="rescheduleBookingModal"/>
+                            <BookingModal v-if="reschedule[booking.id]" 
+                            class="rescheduleBookingModal"
+                            :scheduleInfo="info" 
+                            @close="closeRescheduleModal(booking.id)" 
+                            @Reschedule_notification="addNotification('Service rescheduled successfully!', 3000)"
+                            @Reschedule_error="addNotification('Error rescheduling service', 3000)"
+                            />
                         </td>
                     </tr>
                 </tbody>
             </table>
             <img v-else class="emptyMessage" src="@/assets/images/empty-box.png" alt="NO Data">
         </div>
-        <ReviewModal v-if="showModal" :bookingId="booking_id" :action="Action" @closeModal="closeModal" />
+        <!-- Review Modal -->
+        <ReviewModal v-if="showModal" 
+        :bookingId="booking_id" 
+        :action="Action" 
+        @closeModal="closeModal"
+        @notification="addNotification('Review added successfully!', 3000)" 
+        @error="addNotification('Error adding review', 3000)"
+        @update_notification="addNotification('Review updated successfully!', 3000)"
+        @update_error="addNotification('Error updating review', 3000)"
+        />
+
+        <!-- Notification Modal -->
+        <NotificationModal v-for="notification in notifications" 
+        :key="notification.message" 
+        :message="notification.message" 
+        :duration="notification.duration" />
     </div>
 </template>
 

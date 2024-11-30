@@ -1,21 +1,17 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import Logout from '@/assets/svg/Logout.svg?raw'
+import DefaultProfile from '@/assets/svg/DefaultProfile.svg?raw'
 import ProfileModal from '@/components/Customer/ProfileModal.vue'
 import ProfileEditModal from './ProfileEditModal.vue'
 import axios from 'axios'
 
-const token = localStorage.getItem('token')
+const router = useRouter()
+const token = localStorage.getItem('customerToken')
 
 const profileModal = ref(false) 
-const customer = ref({
-            'email': '',
-            'username': '',
-            'password': '',
-            'contact': null,
-            'pincode': null,
-            'address': ''
-        })
+const customer = ref({})
 
 // Getting customer details
 
@@ -72,29 +68,78 @@ const closeEditModal = () => {
     profileEditModal.value = false
 }
 
+//Logout
+const logout = async () => {
+    try {
+        await axios.post('http://127.0.0.1:5000/customer/logout',{},{
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        }
+        ); 
+    } catch (error) {
+        console.error('Error during logout:', error);
+    } finally {
+        localStorage.removeItem('customerToken');
+        router.push({ path: '/login' });
+    }
+};
+
+
+// Notification Modal
+import NotificationModal from '../NotificationModal.vue'
+
+const notifications = ref([])   
+
+const addNotification = (message, duration = 3000) => {
+    notifications.value.push({ message, duration })
+}
 </script>
 
 <template>
     <div>
         <div class="navbar" :class="{ 'blur-background': profileModal || profileEditModal }">
             <div class="customerDetail">
-                <div @click="showModal" class="img"></div>
+                <div class="img" @click="showModal">
+                    <img v-if="customer.image_name"
+                        :src="'http://127.0.0.1:5000/static/customers_imgs/' + customer.image_name"
+                        alt="Profile Image" 
+                        class="profile-img"
+                    />
+                    <p v-else v-html="DefaultProfile" class="profile-img"></p>
+                </div>
                 <div class="customerName">{{ customer.username }}</div>
             </div>
             <div class="menu">
                 <div class="home" @click="$router.push({ name: 'customer' })">Home</div>
                 <div class="service" @click="$router.push({ name: 'customer-services' })">Service</div>
-                <div class="stats">Statistics</div>
+                <div class="stats" @click="$router.push({ name: 'customer-statistics' })">Statistics</div>
             </div>
-            <div class="logout" v-html="Logout"></div>
+            <div class="logout" v-html="Logout" @click="logout"></div>
         </div>
 
         <!-- Modal -->
-        <ProfileModal v-if="profileModal" class="modal-content" @close="closeModal" @openProfileEditModal="openEditModal" />
+        <ProfileModal v-if="profileModal" 
+        class="modal-content" 
+        @close="closeModal" 
+        @openProfileEditModal="openEditModal" />
 
         <!-- Edit Modal -->
-        <ProfileEditModal v-if="profileEditModal" class="editModal-content" @closeProfileEditModal="closeEditModal"
+        <ProfileEditModal v-if="profileEditModal" 
+        class="editModal-content" 
+        @closeProfileEditModal="closeEditModal"
+        @Notification="addNotification('Profile updated successfully!', 3000)"
+        @error="addNotification('Error updating profile', 3000)"
         :profileData="customer" />
+
+        <!-- Notification Modal -->
+        <NotificationModal
+            v-for="(notification, index) in notifications"
+            :key="index"
+            :message="notification.message"
+            :duration="notification.duration"
+            @close="notifications.splice(index, 1)"
+        />
     </div>
 </template>
 
@@ -127,11 +172,20 @@ const closeEditModal = () => {
 }
 
 .img {
-    height: 3rem;
-    width: 3rem;
+    height: 3.2rem;
+    width: 3.2rem;
     background-color: #ece3e3;
     border-radius: 50%;
+    padding: 5px;
     box-shadow: 2px 2px 15px rgba(0, 0, 0, 0.6);
+
+}
+
+.profile-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    overflow: hidden;
 }
 
 .customerName {

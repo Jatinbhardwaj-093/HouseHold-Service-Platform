@@ -17,7 +17,13 @@ const { chartData, chartOptions } = defineProps({
     },
     chartOptions: {
         type: Object,
-        required: true
+        required: true,
+        plugins: {
+            legend: {
+                display: false
+            }
+        }
+
     }
 })
 </script>

@@ -1,22 +1,17 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import Logout from '@/assets/svg/Logout.svg?raw'
+import DefaultProfile from '@/assets/svg/DefaultProfile.svg?raw'
 import ProfileModal from '@/components/Professional/ProfileModal.vue'
 import ProfileEditModal from './ProfileEditModal.vue'
 import axios from 'axios'
 
-const token = localStorage.getItem('token')
+const router = useRouter();
+const token = localStorage.getItem('professionalToken')
 
 const profileModal = ref(false) 
-const professional = ref({
-            'id': '',
-            'username': '',
-            'password': '',
-            'contact': null,
-            'pincode': null,
-            'email': '',
-            'experience': null
-        })
+const professional = ref({})
 
 // Getting professional details
 axios.get('http://127.0.0.1:5000/professional/', {
@@ -67,29 +62,82 @@ const openEditModal = () => {
 const closeEditModal = () => {
     profileEditModal.value = false
 }
+
+const logout = async () => {
+    try {
+        await axios.post(
+            'http://127.0.0.1:5000/professional/logout',
+            {}, 
+            {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem('professionalToken')}`
+                }
+            }
+        );
+        addNotification('Logout successful', 3000);
+    } catch (error) {
+        console.error('Error during logout:', error);
+        addNotification('Error during logout. Please try again.', 3000);
+    } finally {
+        localStorage.removeItem('professionalToken');
+        router.push({ path: '/login' });
+    }
+};
+
+
+
+// Notification
+import NotificationModal from '../NotificationModal.vue'
+
+const notifications = ref([])
+
+const addNotification = (message, duration) => {
+    notifications.value.push({ message, duration })
+}
 </script>
 
 <template>
     <div>
         <div class="navbar" :class="{ 'blur-background': profileModal || profileEditModal }">
             <div class="professionalDetail">
-                <div @click="showModal" class="img"></div>
+                <div class="img" @click="showModal">
+                    <img v-if="professional.image_name"
+                        :src="'http://127.0.0.1:5000/static/professionals_imgs/' + professional.image_name"
+                        alt="Profile Image" 
+                        class="profile-img"
+                    />
+                    <p v-else v-html="DefaultProfile" class="profile-img"></p>
+                </div>
                 <div class="professionalName">{{ professional.username }}</div>
             </div>
             <div class="menu">
                 <div class="home" @click="$router.push({ name: 'professional' })">Home</div>
                 <div class="appointments" @click="$router.push({ name: 'professional-history' })">History</div>
-                <div class="stats">Statistics</div>
+                <div class="stats" @click="$router.push({ name: 'professional-statistics' })">Statistics</div>
             </div>
-            <div class="logout" v-html="Logout"></div>
+            <div class="logout" v-html="Logout" @click="logout" ></div>
         </div>
 
         <!-- Modal -->
-        <ProfileModal v-if="profileModal" class="modal-content" @close="closeModal" @openProfileEditModal="openEditModal" />
+        <ProfileModal v-if="profileModal" @close="closeModal" @openProfileEditModal="openEditModal" />
 
         <!-- Edit Modal -->
-        <ProfileEditModal v-if="profileEditModal" class="editModal-content" @closeProfileEditModal="closeEditModal"
-        :profileData="professional" />
+        <ProfileEditModal v-if="profileEditModal" 
+        class="editModal-content" 
+        @closeProfileEditModal="closeEditModal"
+        @Notification="addNotification('Profile updated successfully!', 3000)"
+        @error="addNotification('Error updating profile.Please try again!', 3000)"
+        :profileData="professional" 
+        />
+
+        <!-- Notification Modal -->
+        <NotificationModal
+            v-for="(notification, index) in notifications"
+            :key="index"
+            :message="notification.message"
+            :duration="notification.duration"
+            @close="notifications.splice(index, 1)"
+        />
     </div>
 </template>
 
@@ -124,7 +172,16 @@ const closeEditModal = () => {
     width: 3rem;
     background-color: #ece3e3;
     border-radius: 50%;
+    padding: 5px;
     box-shadow: 2px 2px 15px rgba(0, 0, 0, 0.6);
+}
+
+.profile-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    overflow: hidden;
+    
 }
 
 .professionalName {

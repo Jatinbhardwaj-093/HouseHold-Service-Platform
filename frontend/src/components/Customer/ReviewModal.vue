@@ -5,6 +5,7 @@ import FillStar from '@/assets/svg/FillStar.svg?raw';
 
 import { ref } from 'vue';
 import axios from 'axios';
+const token = localStorage.getItem('customerToken');
 
 const { bookingId,action } = defineProps({
     bookingId: Number,
@@ -16,24 +17,36 @@ const response = ref({
     rating: 0
 });
 
-const emit = defineEmits(['closeModal']);
+const emit = defineEmits(['closeModal','notification','error','update_notification','update_error']);
 
 const submitReview = async () => {
     
     if (action === 'createReview') {
-        await axios.post(`http://127.0.0.1:5000/customer/service/${bookingId}/review/create`, response.value, {
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                'Content-Type': 'application/json'
-            }
-        });
+        try {
+            await axios.post(`http://127.0.0.1:5000/customer/service/${bookingId}/review/create`, response.value, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            emit('notification');
+        }
+        catch (error) {
+            emit('error');
+        }
     } else if (action === 'editReview') {
-        await axios.put(`http://127.0.0.1:5000/customer/service/${bookingId}/review/update`, response.value, {
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                'Content-Type': 'application/json'
-            }
-        });
+        try {
+            await axios.put(`http://127.0.0.1:5000/customer/service/${bookingId}/review/update`, response.value, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            emit('update_notification');
+        }
+        catch (error) {
+            emit('update_error');
+        }
     }
     
     emit('closeModal');

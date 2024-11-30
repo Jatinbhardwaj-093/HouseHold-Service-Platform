@@ -9,7 +9,7 @@ const error = ref(null);
 
 // Fetch all services
 onMounted(async () => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('customerToken');
 
     if (!token ) {
         window.location.href = '/'; 
@@ -22,20 +22,16 @@ onMounted(async () => {
                 }
             });
             servicesData.value = response.data; 
-            console.log(servicesData.value);  
         } catch (err) {
             error.value = 'Error: ' + (err.response ? err.response.data : err.message); 
         }
     }
 });
 
-
 // View service details
 const viewService = async (serviceId) => {
     window.location.href = `/customer/service/${serviceId}`;
 }
-
-
 </script>
 
 
@@ -45,8 +41,13 @@ const viewService = async (serviceId) => {
         <div class="heading">   Services</div>
         <div class="blocks" >
             <div class="block" v-for="service in servicesData" :key="service.id" @dblclick="viewService(service.id)">
-                <img v-if="service.image" :src="service.image.filepath"/>
-                <div v-else class="serviceImgHolder"><p v-html="NoImg"></p></div>
+                <div class="serviceImageHolder">
+                    <img v-if="service.image_name" 
+                    :src="`http://127.0.0.1:5000/static/services_imgs/${service.image_name}`" 
+                    alt="Service Image" 
+                    class="imagePreview" />
+                    <p v-else v-html="NoImg" class="imagePreview"></p>
+                </div>
                 <div class="serviceName">{{ service.name }}</div>
                 <div class="servicePrice">₹ {{ service.price }}"</div>
             </div>
@@ -96,8 +97,8 @@ const viewService = async (serviceId) => {
 
 .block{
     background-color: black;
-    width: 130px;
-    height: 130px;
+    width: 140px;
+    height: 140px;
     border-radius: 1rem;
     box-shadow: 2px 5px 20px rgba(0, 0, 0, 0.6);
     padding: 10px;
@@ -113,37 +114,36 @@ const viewService = async (serviceId) => {
     color: #fff;
     font-size: 1rem;
     font-weight: bolder;
+    white-space: nowrap;
     text-align: start;
     margin-top: 0.25rem;
     margin-bottom: 0.25rem;
+    overflow: hidden;
 }
 
 .servicePrice{
     color: #3edf4e;
-    font-size: 0.5rem;
+    font-size: .8rem;
     font-weight: bolder;
     text-align: start;
 }
 
-img {
-    width: 50px;
-    height: 50px;
-    object-fit: cover;
-    border-radius: 0.25rem;
-}
-
-.serviceImgHolder {
+.serviceImageHolder {
     margin: auto;
     width: 90px;
     height: 70px;
+    padding: 2px;
+    margin-top: 3px;
     background-color: antiquewhite;
     border-radius: 0.25rem;
 }
 
-.serviceImgHolder p {
-    width: 70px;
-    height: 40px;
+.imagePreview {
+    width: 100%;
+    height: 100%;
     margin: auto;
+    object-fit: contain;
+    overflow: hidden;
 }
 
 </style>

@@ -19,21 +19,15 @@ const editServiceData = ref({              // Pre-filled data for the edit servi
     description: '',
     price: '',
     service_id: null,
-    image: null
+    image_name: null
 });
 
+const token = localStorage.getItem('adminToken');
 const error = ref(null);
 
 // Fetch all services
 onMounted(async () => {
-    const token = localStorage.getItem('token');
-    const userRole = localStorage.getItem('user_role');
-
-    if (!token || userRole !== 'admin') {
-        window.location.href = '/';
-    } else {
-        await fetchServices();  
-    }
+    await fetchServices();
 });
 
 //Serch service by name
@@ -44,17 +38,24 @@ const searchServices = () => {
 };
 
 const filteredServicesData = computed(() => {
-    if (searchServiceName.value) {
-        return servicesData.value.filter(service =>
-            service.name.toLowerCase()==searchServiceName.value
-        );
-    }
-    return servicesData.value;  
-});
+        return searchServiceName.value ? servicesData.value.filter(service =>
+            service.name.toLowerCase().includes(searchServiceName.value))
+            : servicesData.value
+    })
+
+// Create new service
+const openModal = () => {
+    showModal.value = true;
+};
+
+const closeModal = () => {
+    showModal.value = false;
+    addNotification('Service created successfully!', 3000);
+    fetchServices();
+};
 
 // View service details
 const viewService = async (serviceId) => {
-    const token = localStorage.getItem('token');
     try {
         const response = await axios.get(`http://127.0.0.1:5000/admin/service/${serviceId}`, {
             headers: {
@@ -77,14 +78,19 @@ const openEditModal = (service) => {
         description: service.description,
         price: service.price,
         service_id: service.id,   
-        ImageFilePath: service.image
+        image_name: service.image_name
     };
     showEditModal.value = true;
 };
 
+const closeEditModal = () => {
+    showEditModal.value = false;
+    addNotification('Service updated successfully!', 3000);
+    fetchServices();
+};
+
 // Delete service 
-const deleteService = async (serviceId) => {
-    const token = localStorage.getItem('token');
+const deleteService = async (serviceId,service_name) => {
     try {
         await axios.delete(`http://127.0.0.1:5000/admin/service/${serviceId}`, {
             headers: {
@@ -92,7 +98,7 @@ const deleteService = async (serviceId) => {
                 'Content-Type': 'application/json'
             }
         });
-        alert('Service deleted successfully');
+        addNotification( 'Service ' + service_name + 'deleted successfully!',3000);
         await fetchServices(); 
     } catch (err) {
         error.value = 'Error: ' + (err.response ? err.response.data : err.message);
@@ -101,7 +107,6 @@ const deleteService = async (serviceId) => {
 
 // Refresh servicesData after edit or delete
 const fetchServices = async () => {
-    const token = localStorage.getItem('token');
     try {
         const response = await axios.get('http://127.0.0.1:5000/admin/', {
             headers: {
@@ -110,9 +115,19 @@ const fetchServices = async () => {
             },
         });
         servicesData.value = response.data; 
+        console.log(servicesData.value);
     } catch (error) {
         console.error('Failed to fetch services:', error);
     }
+};
+
+// Notification
+import NotificationModal from '../NotificationModal.vue';
+
+const notifications = ref([]);
+
+const addNotification = (message, duration) => {
+    notifications.value.push({ message, duration });
 };
 
 </script>
@@ -124,13 +139,18 @@ const fetchServices = async () => {
                 <input type="text" class="search" placeholder="Service Name" v-model="searchServiceName">
                 <div class="searchBtn" v-html="Search" @click="searchServices"></div>
             </div>
-            <div class="createNewBtn" @click="showModal = true">Create New +</div>
+            <div class="createNewBtn" @click="openModal">Create New +</div>
         </div>
 
         <div class="blocks">
             <div class="block" v-for="service in filteredServicesData" :key="service.id">
-                <img v-if="service.image" :src="service.image.filepath"/>
-                <div v-else class="serviceImgHolder"><p v-html="NoImg"></p></div>
+                <div class="serviceImageHolder">
+                    <img v-if="service.image_name"
+                    :src=" 'http://127.0.0.1:5000/static/services_imgs/' + service.image_name" 
+                    alt="Service Image"
+                    class="imagePreview">
+                    <p v-else v-html="NoImg" class="imagePreview"></p>
+                </div>
                 <div class="serviceName">
                     <p>{{ service.name }}</p>
                     <details>
@@ -140,7 +160,7 @@ const fetchServices = async () => {
                         <ul>
                             <li @click="viewService(service.id)">View</li>
                             <li @click="openEditModal(service)">Edit</li>
-                            <li @click="deleteService(service.id)">Delete</li>
+                            <li @click="deleteService(service.id,service.name)">Delete</li>
                         </ul>
                     </details>
                 </div>
@@ -148,9 +168,10 @@ const fetchServices = async () => {
         </div>
 
         <!-- Modal Components -->
-        <Modal :showModal="showModal" @closeModal="showModal = false" />
+        <Modal :showModal="showModal" @closeModal="closeModal" />
         <ServiceModal :showServiceModal="showServiceModal" :serviceData="selectedService" @closeServiceModal="showServiceModal = false" />
-        <EditModal :showEditModal="showEditModal" :serviceToEdit="editServiceData" @closeEditModal="showEditModal = false" />
+        <EditModal :showEditModal="showEditModal" :serviceToEdit="editServiceData" @closeEditModal="closeEditModal" />
+        <NotificationModal v-for="(notification, index) in notifications" :key="index" :message="notification.message" :duration="notification.duration" @close="notifications.splice(index, 1)" />
     </div>
 </template>
 
@@ -232,8 +253,8 @@ input:focus::placeholder {
 .block {
     position: relative;
     background-color: black;
-    width: 120px;
-    height: 120px;
+    width: 130px;
+    height: 130px;
     border-radius: 0.5rem;
     box-shadow: 2px 5px 20px rgba(0, 0, 0, 0.6);
     padding: 5px;
@@ -246,9 +267,8 @@ input:focus::placeholder {
 
 .serviceName {
     display: flex;
-    justify-content: center;
-    align-items: end;
-    gap: 10px;
+    justify-content: space-evenly;
+    align-items: flex-end;
     width: 100%;
     text-align: center;
     color: #fff;
@@ -256,24 +276,26 @@ input:focus::placeholder {
     font-weight: bolder;
 }
 
-img {
-    width: 50px;
-    height: 50px;
-    object-fit: cover;
-    border-radius: 0.25rem;
+.serviceName p {
+    overflow: hidden;
+    white-space: nowrap;
 }
 
-.serviceImgHolder {
+.serviceImageHolder {
     width: 90px;
     height: 70px;
     background-color: antiquewhite;
     border-radius: 0.25rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
-.serviceImgHolder p {
-    width: 70px;
-    height: 40px;
-    margin: auto;
+.imagePreview {
+    width: 70%;
+    height: 70%;
+    object-fit: contain; 
+    display: block;
 }
 
 details summary .menuDot {

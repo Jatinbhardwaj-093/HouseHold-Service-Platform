@@ -1,20 +1,3 @@
-<template>
-    <div v-if="showEditModal" class="modal">
-        <form @submit.prevent="submitEditForm">
-            <div class="serviceImg">
-                <p v-html="Img"></p>
-                <input type="file" class="ImgFilePath" @change="imgPath" accept="image/*" />
-            </div>
-            <input type="text" class="serviceName" placeholder="SERVICE NAME" v-model="editFormData.service_name" />
-            <textarea class="serviceDescription" placeholder="DESCRIPTION....."
-                v-model="editFormData.description"></textarea>
-            <input type="number" class="servicePrice" placeholder="PRICE" v-model="editFormData.price" />
-            <button type="submit" class="btn">Edit</button>
-        </form>
-        <div v-html="Cross" class="cross" @click="closeEditModal"></div>
-    </div>
-</template>
-
 <script setup>
 import Img from '@/assets/svg/Img.svg?raw'
 import Cross from '@/assets/svg/Cross.svg?raw'
@@ -33,14 +16,15 @@ const editFormData = ref({
     service_name: '',
     description: '',
     price: null,
-    service_id: null
+    service_id: null,
+    image_name: null
 });
 
 // Watch the passed data to pre-fill form fields
 watch(() => serviceToEdit, (newVal) => {
     if (newVal) {
         editFormData.value = {
-            ImgFilePath: newVal.image ? newVal.image.filepath : null,
+            image_name: newVal.image_name,
             service_name: newVal.service_name,
             description: newVal.description,
             price: newVal.price,
@@ -49,6 +33,8 @@ watch(() => serviceToEdit, (newVal) => {
     }
 }, { immediate: true });
 
+const imageFile = ref(null)
+
 const imgPath = (event) => {
     const file = event.target.files[0]
 
@@ -56,6 +42,7 @@ const imgPath = (event) => {
         return
     }
 
+    imageFile.value = file 
     const reader = new FileReader()
     reader.readAsDataURL(file)
 
@@ -65,12 +52,20 @@ const imgPath = (event) => {
 }
 
 const submitEditForm = async () => {
+    const formData = new FormData()
+    formData.append('service_name', editFormData.value.service_name)
+    formData.append('description', editFormData.value.description)
+    formData.append('price', editFormData.value.price)  
+
+    if (imageFile.value) {
+        formData.append('image', imageFile.value)
+    }
     try {
-        const response = await axios.put(`http://127.0.0.1:5000/admin/service/${editFormData.value.service_id}`, editFormData.value, {
+        const response = await axios.put(`http://127.0.0.1:5000/admin/service/${editFormData.value.service_id}`, formData, {
             headers: {
-                'Content-Type': 'application/json'
+                'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
             }
-        })
+        })  
         console.log(response.data)
         closeEditModal()
     } catch (error) {
@@ -82,6 +77,35 @@ function closeEditModal() {
     emit('closeEditModal')
 }
 </script>
+
+<template>
+    <div v-if="showEditModal" class="modal">
+        <form @submit.prevent="submitEditForm">
+            <div class="serviceImg">
+                <input type="file" class="ImgFilePath" @change="imgPath" accept="image/*" />
+                <img v-if="editFormData.ImgFilePath" 
+                :src="editFormData.ImgFilePath" 
+                alt="Image Preview" 
+                class="ImagePreview"/>
+
+                <img v-else-if="editFormData.image_name" 
+                :src=" 'http://127.0.0.1:5000/static/services_imgs/' + editFormData.image_name" 
+                alt="Image Preview" 
+                class="ImagePreview"/>
+                
+                <p v-else v-html="Img"
+                class="ImagePreview"></p>
+            </div>
+            <input type="text" class="serviceName" placeholder="SERVICE NAME" v-model="editFormData.service_name" />
+            <textarea class="serviceDescription" placeholder="DESCRIPTION....."
+                v-model="editFormData.description"></textarea>
+            <input type="number" class="servicePrice" placeholder="PRICE" v-model="editFormData.price" />
+            <button type="submit" class="btn">Edit</button>
+        </form>
+        <div v-html="Cross" class="cross" @click="closeEditModal"></div>
+    </div>
+</template>
+
 
 <style scoped>
 .modal {
@@ -107,7 +131,14 @@ function closeEditModal() {
     background-color: rgb(255, 255, 255);
     border-radius: 1rem;
     margin-bottom: 1rem;
-    padding: 1rem;
+    padding: 0.7rem;
+}
+
+.ImagePreview {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 1rem;
 }
 
 .ImgFilePath {
