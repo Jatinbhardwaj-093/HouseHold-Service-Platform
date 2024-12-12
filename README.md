@@ -17,6 +17,11 @@ https://drive.google.com/file/d/1DE2eKkshxdzDvEQlID5JdukZSG6o6D2a/view?usp=shari
 
 # ⏳Installation and SetUp
 
+## ᛋEnvironment Variables
+Create a `.env` file in the backend directory of the project and use the `dummy.env` file as a reference to configure it with your own values.
+
+
+
 ### 1. Clone the Reposistory
 
 ```bash
@@ -26,7 +31,7 @@ git clone https://github.com/Jatinbhardwaj-093/HouseHold-Service-Platform.git
 ### 2.Change the working directory
 
 ```bash
-cd HomeService
+cd HomeHold-Service-Platform
 ```
 ## Backend
 
