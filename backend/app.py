@@ -48,6 +48,7 @@ def create_app():
 app = create_app()
 celery = create_celery(app)
 with app.app_context():
+    db.create_all()
     schedule_email(app, celery)
 
 if __name__ == '__main__':
