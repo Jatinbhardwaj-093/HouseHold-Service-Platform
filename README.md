@@ -1,41 +1,32 @@
+# 🏠 Household Service Platform
 
-# 🏠Household Service Platform
+A comprehensive online platform connecting homeowners with professionals for household services such as cleaning, plumbing, electrical work, lawn care, pest control, painting, and home repairs.
 
-A household service website is an online platform that connects homeowners with professionals or businesses offering various household services. These services typically include cleaning, plumbing, electrical work, lawn care, pest control, painting, home repairs, and other maintenance or improvement tasks.
+---
 
+## 🚀 Demo
 
+- **Preview Video**: [Watch here](https://drive.google.com/file/d/1OozakE-Dj72zDOwhWzIx2_azcFoEfMJq/view?usp=drive_link)  
+- **Documentation**: [View Documentation](https://drive.google.com/file/d/1DE2eKkshxdzDvEQlID5JdukZSG6o6D2a/view?usp=sharing)
 
-## Demo
+---
 
-#### 📽️Preview video
-https://drive.google.com/file/d/1OozakE-Dj72zDOwhWzIx2_azcFoEfMJq/view?usp=drive_link
+## ⏳ Installation and Setup
 
-#### 📄Documentation
-https://drive.google.com/file/d/1DE2eKkshxdzDvEQlID5JdukZSG6o6D2a/view?usp=sharing
-
-
-
-# ⏳Installation and SetUp
-
-## ᛋEnvironment Variables
-Create a `.env` file in the backend directory of the project and use the `dummy.env` file as a reference to configure it with your own values.
-
-
-
-### 1. Clone the Reposistory
+### 📁 1. Clone the Repository
 
 ```bash
 git clone https://github.com/Jatinbhardwaj-093/HouseHold-Service-Platform.git
 ```
 
-### 2.Change the working directory
+### 📂 2. Navigate to the Project Directory
 
 ```bash
-cd HomeHold-Service-Platform
+cd HouseHold-Service-Platform
 ```
 ## Backend
 
-### 3. Create & activate Virtual Environment
+### 🖥️ 3. Create and Activate a Virtual Environment
 - **Create Venv**
 ```bash
 cd backend
@@ -53,39 +44,35 @@ python -m venv venv
   venv\\Scripts\\activate
   ```
 
-### 4. Install Backend Dependices
+### 🔧 4. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 5.Start the backend server
-
+### ▶️ 5. Start the Backend Server
 ```bash
-python run.py
+python app.py
 ```
-     
-  **or**
-
+  **OR**
 ```bash
 flask run
 ```
 
-### 6. Setup Redis
-Make sure Redis is installed and running. 
-You can start Redis using:
+### ⚙️ 6. Setup Redis
+Ensure Redis is installed. Start Redis with:
 ```bash 
 redis-server
 ```
 
-### 7. Run Celery Worker
+### 🛠️ 7. Run Celery Worker
 In a new terminal window,run the Celery worker:
 ```bash 
 cd ../backend
 celery -A app.celery worker
 ```
 
-### 8. Run Celery Beat
+### 🕐 8. Run Celery Beat
 In a new terminal window,run the Celery beat:
 ```bash 
 cd ../backend
@@ -94,18 +81,29 @@ celery -A app.celery beat
 
 ## Frontend
 
-### 9. Install Frontend Dependices
+### 📥 9. Install Frontend Dependices
 In a new terminal window,run the Celery beat:
 ```bash
 cd ../frontend
 npm install
 ```
 
-### 10. Run Frontend Development server
+### ▶️ 10. Run Frontend Development server
 
 ```bash
 npm run dev
 ```
+## 👨🏻‍💼 Create an Admin User
+
+To set up an admin user for monitoring and control, run the following:
+
+```bash
+cd ../backend
+python create_admin.py
+```
+
+**Note:** Update the credentials in the create_admin.py file as needed.
+
 ## ✍🏻Author
 
 - [@Github-JatinBhardwaj](https://github.com/Jatinbhardwaj-093)
