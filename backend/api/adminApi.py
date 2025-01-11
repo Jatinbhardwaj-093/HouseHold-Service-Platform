@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request, current_app, send_file
 from werkzeug.utils import secure_filename
-from models import Admin,Services, ServiceImg, Customer, Professional, ServiceRequest, ServiceReview, db
+from models import Admin,Services, ServiceImg, Customer, Professional,ProfessionalImg, ServiceRequest, ServiceReview, db
 from . import bcrypt, custom_jwt_required,redis_client,get_token_expiration_time
 import os
 from sqlalchemy import func
@@ -277,6 +277,7 @@ def professionals():
     professionals = Professional.query.all()
     response = []
     for professional in professionals:
+        img = ProfessionalImg.query.filter_by(Professional_id=professional.id).first()
         response.append({
             'professionalId': professional.id,
             'email': professional.email,
@@ -287,7 +288,8 @@ def professionals():
             'rating': professional.rating,
             'experience': professional.experience,
             'flag': professional.flag,
-            'verify': professional.verify
+            'verify': professional.verify,
+            'image_name': img.name if img else None
         })
     
     redis_client.setex(cache_key, timedelta(minutes=15), json.dumps(response))

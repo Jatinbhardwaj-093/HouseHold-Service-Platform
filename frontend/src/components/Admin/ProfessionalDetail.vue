@@ -3,6 +3,9 @@ import { onMounted, ref, computed } from 'vue'
 import axios from 'axios'
 import Search from '@/assets/svg/Search.svg?raw'
 import Verification from '@/assets/svg/Verification.svg?raw'
+import MenuDot from '@/assets/svg/MenuDot.svg?raw'
+import NoImg from '@/assets/svg/NoImg.svg?raw'
+import Cross from '@/assets/svg/Cross.svg?raw'
 
 const detailsRef = ref([])
 const token = localStorage.getItem('adminToken')
@@ -116,6 +119,29 @@ const deleteProfessional = async (professional_id, professional_name) => {
     }
 }
 
+const showSidebar = ref(false)
+const selectedProfessional = ref(null)
+const isClosing = ref(false)
+
+const viewProfessional = (professional) => {
+    selectedProfessional.value = professional
+    showSidebar.value = true
+}
+
+const closeSidebar = () => {
+    isClosing.value = true
+    setTimeout(() => {
+        showSidebar.value = false
+        isClosing.value = false
+    }, 500) // Match the transition duration
+}
+
+const showMenu = ref(null)
+
+const toggleMenu = (professionalId) => {
+    showMenu.value = showMenu.value === professionalId ? null : professionalId
+}
+
 onMounted(() => {
     fetchProfessional()
 })
@@ -131,7 +157,35 @@ const addNotification = (message, duration = 3000) => {
 </script>
 
 <template>
-    <div>
+    <div class="main-container">
+        <transition name="sidebar">
+            <div class="sidebar" v-if="showSidebar && !isClosing">
+                <p v-html="Cross" @click="closeSidebar" style="width: 30px; height: 30px;"></p>
+                <div v-if="selectedProfessional">
+                    <img
+                        v-if="selectedProfessional.image_name"
+                        :src="
+                            'http://127.0.0.1:5000/static/professionals_imgs/' +
+                            selectedProfessional.image_name
+                        "
+                        alt="Professional Image"
+                        class="imagePreview"
+                    />
+                    <p><strong>Name:</strong> {{ selectedProfessional.username }}</p>
+                    <p><strong>Service:</strong> {{ selectedProfessional.serviceName }}</p>
+                    <p><strong>Email:</strong> {{ selectedProfessional.email }}</p>
+                    <p><strong>Experience:</strong> {{ selectedProfessional.experience }} Years</p>
+                    <p><strong>Pincode:</strong> {{ selectedProfessional.pincode }}</p>
+                    <p><strong>Rating:</strong> {{ selectedProfessional.rating }}</p>
+                    <p>
+                        <strong>Status:</strong>
+                        <span v-if="selectedProfessional.verify == 'no'">Not Verified</span>
+                        <span v-else-if="selectedProfessional.flag == 'yes'">Flagged</span>
+                        <span v-else>OK</span>
+                    </p>
+                </div>
+            </div>
+        </transition>
         <div class="container">
             <div class="header">
                 <div class="searchBar">
@@ -150,40 +204,34 @@ const addNotification = (message, duration = 3000) => {
             </div>
             <div v-if="filteredProfessionals.length > 0" class="card-container">
                 <div v-for="prof in filteredProfessionals" :key="prof.professionalId" class="card">
-                    <div class="card-header">
-                        <p class="username">{{ prof.username }}</p>
-                        <div v-if="prof.verify == 'yes'" class="verification-badge">
-                            <p v-html="Verification" style="height: 15px; width: 15px"></p>
-                            <p style="color: rgb(82, 149, 231); font-weight: 600">Verified</p>
-                        </div>
+                    <div class="image-holder">
+                        <img
+                            v-if="prof.image_name"
+                            :src="'http://127.0.0.1:5000/static/professionals_imgs/' + prof.image_name"
+                            alt="Professional Image"
+                            class="imagePreview"
+                        />
+                        <p v-else v-html="NoImg" class="noImagePreview"></p>
                     </div>
+                    <div class="divider"></div>
                     <div class="card-body">
-                        <p><strong>Service:</strong> {{ prof.serviceName }}</p>
-                        <p><strong>Email:</strong> {{ prof.email }}</p>
-                        <p><strong>Experience:</strong> {{ prof.experience }} Years</p>
-                        <p><strong>Pincode:</strong> {{ prof.pincode }}</p>
-                        <p><strong>Rating:</strong> {{ prof.rating }}</p>
-                        <p>
-                            <strong>Status:</strong>
-                            <span v-if="prof.verify == 'no'">Not Verified</span>
-                            <span v-else-if="prof.flag == 'yes'">Flagged</span>
-                            <span v-else>OK</span>
-                        </p>
-                    </div>
-                    <div class="card-footer">
-                        <div class="footer-divider">
-                            <div>
-                                <button
-                                    v-if="prof.verify == 'no'"
+                        <div class="verified">
+                            <p v-if="prof.verify == 'yes'" v-html="Verification" style="height: 20px; width: 20px;" ></p>
+                            <p class="username">{{ prof.username }}</p>
+                        </div>
+                        <div class="menu-button">
+                            <button @click="toggleMenu(prof.professionalId)" class="menu-btn">
+                                <p v-html="MenuDot" style="height: 80%; width: 80%; margin-left: 3px; margin-bottom: 5px;"></p>
+                            </button>
+                            <ul v-if="showMenu === prof.professionalId" class="menu-list">
+                                <li @click="viewProfessional(prof)">View</li>
+                                <li
                                     @click="verifyProfessional(prof.professionalId, prof.username)"
+                                    v-if="prof.verify == 'no'"
                                 >
                                     Verify
-                                </button>
-                            </div>
-                            <div>
-                                <button
-                                    style="margin-right: 5px"
-                                    v-if="prof.verify == 'yes'"
+                                </li>
+                                <li
                                     @click="
                                         flagProfessional(
                                             prof.professionalId,
@@ -191,15 +239,14 @@ const addNotification = (message, duration = 3000) => {
                                             prof.flag
                                         )
                                     "
+                                    v-else
                                 >
                                     {{ prof.flag == 'no' ? 'Flag' : 'Unflag' }}
-                                </button>
-                                <button
-                                    @click="deleteProfessional(prof.professionalId, prof.username)"
-                                >
+                                </li>
+                                <li @click="deleteProfessional(prof.professionalId, prof.username)">
                                     Delete
-                                </button>
-                            </div>
+                                </li>
+                            </ul>
                         </div>
                     </div>
                 </div>
@@ -223,15 +270,24 @@ const addNotification = (message, duration = 3000) => {
 </template>
 
 <style scoped>
+.main-container {
+    display: flex;
+    width: 98%;
+    margin: auto;
+    overflow: hidden; /* Remove scrolling from main-container */
+    gap: .5rem;
+}
+
 .container {
     width: 95%;
-    height: 80vh;
-    margin: auto;
+    margin:auto;
+    height: 85vh;
     border-radius: 1rem;
     box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.6);
     background-color: #3c3c3c;
-    overflow: auto;
     scrollbar-width: thin;
+    overflow: auto;
+    padding-bottom: 4rem;
 }
 
 .header {
@@ -280,37 +336,54 @@ input:focus::placeholder {
 }
 
 .card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 0.5rem;
     box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.6);
     padding: 1rem;
+    padding-bottom: 0;
     width: 300px;
     color: #f5f5dc;
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.card-header {
+.card-body {
     display: flex;
     justify-content: space-between;
-    align-items: end;
+    align-items: center;
+    width: 100%;
 }
 
 .username {
-    font-size: 2rem;
+    font-size: 1.5rem;
     font-weight: 600;
     color: #fe772e;
+    margin: 0.5rem 0;
+}
+
+.divider {
+    width: 100%;
+    height: 1px;
+    background-color: #6b6a6a;
 }
 
 .card-body p {
     margin: 0.5rem 0;
 }
 
+.verified {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
 .card-footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: 1rem;
 }
 
 .footer-divider {
@@ -324,18 +397,6 @@ input:focus::placeholder {
     align-items: center;
     gap: 2px;
     margin-bottom: 8px;
-}
-
-button {
-    border: none;
-    border-radius: 0.2rem;
-    width: 4rem;
-    color: white;
-    cursor: pointer;
-    background-color: #1e1e1e;
-    color: #fe772e;
-    padding: 3px;
-    text-align: center;
 }
 
 .btn {
@@ -358,5 +419,107 @@ button {
     display: block;
     margin: auto;
     margin-top: 2rem;
+}
+
+.menu-button {
+    position: relative;
+}
+
+.menu-btn {
+    background-color: #2c2b2b;
+    border: none;
+    border-radius: 5px;
+    height: 2rem;
+    width: 2rem;
+    vertical-align: middle;
+    text-align: center;
+    cursor: pointer;
+}
+
+.menu-list {
+    position: absolute;
+    right: 150%;
+    bottom: 50%;
+    background: #2c2b2b;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+    z-index: 100;
+}
+
+.menu-list li {
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    color: #f5f5dc;
+}
+
+.menu-list li:hover {
+    background: #3c3c3c;
+}
+
+.sidebar {
+    width: 25%;
+    height: 85vh;
+    background: #2c2b2b;
+    border-radius: 1rem;
+    box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.6);
+    padding: 1rem;
+    overflow-y: auto;
+    color: #f5f5dc;
+    transition: transform .5s ease-in-out, opacity .5s ease-in-out;
+}
+
+/* Animation for the sidebar opening */
+.sidebar-enter-active,
+.sidebar-leave-active {
+    transition: transform .5s ease-in-out, opacity .5s ease-in-out;
+}
+
+.sidebar-enter-from {
+    transform: translateX(-100%);
+    opacity: 0;
+}
+
+.sidebar-enter-to {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.sidebar-leave-from {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.sidebar-leave-to {
+    transform: translateX(-100%);
+    opacity: 0;
+}
+
+
+
+.image-holder {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #3c3c3c;
+    border-radius: 2rem;
+    width: 15rem;
+    height: 10rem;
+    padding: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.imagePreview {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.noImagePreview {
+    width: 70%;
+    height: 70%;
+    margin-bottom: 3rem;
+    object-fit: contain;
 }
 </style>
