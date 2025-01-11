@@ -149,16 +149,12 @@ const addNotification = (message, duration = 3000) => {
                 </div>
             </div>
             <div v-if="filteredProfessionals.length > 0" class="card-container">
-                <div
-                    v-for="prof in filteredProfessionals"
-                    :key="prof.professionalId"
-                    class="card"
-                >
+                <div v-for="prof in filteredProfessionals" :key="prof.professionalId" class="card">
                     <div class="card-header">
                         <p class="username">{{ prof.username }}</p>
                         <div v-if="prof.verify == 'yes'" class="verification-badge">
-                            <p v-html="Verification" style="height: 15px; width: 15px;"></p>
-                            <p style="color: rgb(82, 149, 231); font-weight: 600;">Verified</p>
+                            <p v-html="Verification" style="height: 15px; width: 15px"></p>
+                            <p style="color: rgb(82, 149, 231); font-weight: 600">Verified</p>
                         </div>
                     </div>
                     <div class="card-body">
@@ -327,7 +323,7 @@ input:focus::placeholder {
     display: flex;
     align-items: center;
     gap: 2px;
-    margin-bottom: 8px
+    margin-bottom: 8px;
 }
 
 button {
