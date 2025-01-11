@@ -39,19 +39,19 @@ const flagCustomer = async (customer) => {
             }
         )
         if (customer.flag == 'no') {
-            addNotification('Customer ' + customer.username + ' flagged successfully!',3000)
+            addNotification('Customer ' + customer.username + ' flagged successfully!', 3000)
         } else {
-            addNotification('Customer ' + customer.username + ' unflagged successfully!',3000)
+            addNotification('Customer ' + customer.username + ' unflagged successfully!', 3000)
         }
-        
-        await fetchCustomers() 
+
+        await fetchCustomers()
     } catch (err) {
         console.error('Failed to flag customer:', err)
     }
 }
 
 // Delete customer and reload data
-const deleteCustomer = async (customerId,customer_name) => {
+const deleteCustomer = async (customerId, customer_name) => {
     try {
         await axios.delete(`http://127.0.0.1:5000/admin/customer/${customerId}`, {
             headers: {
@@ -59,8 +59,8 @@ const deleteCustomer = async (customerId,customer_name) => {
                 'Content-Type': 'application/json'
             }
         })
-        await fetchCustomers() 
-        addNotification('Customer ' + customer_name + ' deleted successfully!',3000)
+        await fetchCustomers()
+        addNotification('Customer ' + customer_name + ' deleted successfully!', 3000)
     } catch (err) {
         addNotification('Failed to delete' + customer_name + '. Please try again.', 5000)
     }
@@ -70,9 +70,9 @@ const deleteCustomer = async (customerId,customer_name) => {
 const search = ref('')
 const filteredCustomers = computed(() => {
     return search.value
-        ? customers.value.filter(customer => 
-            customer.username.toLowerCase().includes(search.value.toLowerCase())
-        )
+        ? customers.value.filter((customer) =>
+              customer.username.toLowerCase().includes(search.value.toLowerCase())
+          )
         : customers.value
 })
 
@@ -90,52 +90,62 @@ const addNotification = (message, duration) => {
     <div>
         <div class="container">
             <div class="searchBar">
-                <input type="text" class="search" placeholder="Search by customer name" v-model="search" />
+                <input
+                    type="text"
+                    class="search"
+                    placeholder="Search by customer name"
+                    v-model="search"
+                />
                 <div class="searchBtn" v-html="Search"></div>
             </div>
-            <table v-if="filteredCustomers.length > 0">
-                <thead>
-                    <tr>
-                        <th>S.No</th>
-                        <th>Name</th>
-                        <th>Address</th>
-                        <th>Email</th>
-                        <th>Contact</th>
-                        <th>Pincode</th>
-                        <th>Status</th>
-                        <th style="width: 5%;"></th>
-                        <th style="width: 8%;"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="(customer, index) in filteredCustomers" :key="customer.id">
-                        <td>{{ index + 1 }}</td>
-                        <td>{{ customer.username }}</td>
-                        <td>{{ customer.address }}</td>
-                        <td>{{ customer.email }}</td>
-                        <td>{{ customer.contact }}</td>
-                        <td>{{ customer.pincode }}</td>
-                        <td v-if="customer.flag == 'yes' ">Flagged</td>
-                        <td v-else>OK</td>
-                        <td>
-                            <button @click="flagCustomer(customer)" v-if="customer.flag == 'no' ">Flag</button>
-                            <button @click="flagCustomer(customer)" v-else>Unflag</button>
-                        </td>
-                        <td><button @click="deleteCustomer(customer.id, customer.username)">Delete</button></td>
-                    </tr>
-                </tbody>
-            </table>
-            <img v-else class="emptyMessage" src="@/assets/images/empty-box.png" alt="No customers found">
+            <div v-if="filteredCustomers.length > 0" class="card-container">
+                <div v-for="customer in filteredCustomers" :key="customer.id" class="card">
+                    <div class="card-header">
+                        <p class="username">{{ customer.username }}</p>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Address:</strong> {{ customer.address }}</p>
+                        <p><strong>Email:</strong> {{ customer.email }}</p>
+                        <p><strong>Contact:</strong> {{ customer.contact }}</p>
+                        <p><strong>Pincode:</strong> {{ customer.pincode }}</p>
+                        <p>
+                            <strong>Status:</strong>
+                            <span v-if="customer.flag == 'yes'">Flagged</span>
+                            <span v-else>OK</span>
+                        </p>
+                    </div>
+                    <div class="card-footer">
+                        <div class="footer-divider">
+                            <div>
+                                <button @click="flagCustomer(customer)">
+                                    {{ customer.flag == 'no' ? 'Flag' : 'Unflag' }}
+                                </button>
+                            </div>
+                            <div>
+                                <button @click="deleteCustomer(customer.id, customer.username)">
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <img
+                v-else
+                class="emptyMessage"
+                src="@/assets/images/empty-box.png"
+                alt="No customers found"
+            />
         </div>
-        <NotificationModal 
-        v-for="(notification, index) in notifications" 
-        :key="index" 
-        :message="notification.message" 
-        :duration="notification.duration" 
-        @close="notifications.splice(index, 1)"/>
+        <NotificationModal
+            v-for="(notification, index) in notifications"
+            :key="index"
+            :message="notification.message"
+            :duration="notification.duration"
+            @close="notifications.splice(index, 1)"
+        />
     </div>
 </template>
-
 
 <style scoped>
 .container {
@@ -175,65 +185,71 @@ input:focus::placeholder {
     color: transparent;
 }
 
-table {
-    width: 98%;
-    border: none;
-    border-collapse: separate;
-    border-spacing: 0;
-    border-radius: 0.5rem;
-    overflow: hidden;
-    margin: auto;
-}
-
-th,
-td {
-    padding: 4px;
-    text-align: center;
-    border-bottom: 1px solid #f5f5dc;
-}
-
-tr:last-child td {
-    border-bottom: none;
-}
-
-tr:nth-child(even) {
-    background-color: #2f2c2c;
-}
-
-thead tr {
-    color: white;
-    background-color: hsla(21, 100%, 50%, 0.85);
-}
-
-tr {
-    color: #f5f5dc;
-    background-color: #3c3c3c;
-}
-
-.option {
-    display: flex;
-    gap: 5px;
-    justify-content: center;
-    align-items: center;
-}
-
 .searchBtn {
     height: 30px;
     width: 30px;
     cursor: pointer;
 }
 
+.card-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.card {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 0.5rem;
+    box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.6);
+    padding: 1rem;
+    width: 300px;
+    color: #f5f5dc;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+}
+
+.username {
+    font-size: 2rem;
+    font-weight: 600;
+    color: #fe772e;
+}
+
+.card-body p {
+    margin: 0.5rem 0;
+}
+
+.card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+}
+
+.footer-divider {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+}
+
 button {
+    border: none;
+    border-radius: 0.2rem;
+    width: 4rem;
+    color: white;
+    cursor: pointer;
     background-color: #1e1e1e;
     color: #fe772e;
     padding: 3px;
     text-align: center;
-    border: none;
-    border-radius: 0.2rem;
-    width: 4rem;
 }
 
-.emptyMessage{
+.emptyMessage {
     height: 250px;
     width: 250px;
     display: block;

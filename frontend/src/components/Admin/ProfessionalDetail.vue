@@ -59,7 +59,7 @@ const toggleUnverifiedFilter = () => {
 }
 
 // Flag, verify, and delete operations
-const flagProfessional = async (professional_id,professional_name,flag_condition) => {
+const flagProfessional = async (professional_id, professional_name, flag_condition) => {
     try {
         await axios.put(
             `http://127.0.0.1:5000/admin/professional/${professional_id}/flag`,
@@ -82,7 +82,7 @@ const flagProfessional = async (professional_id,professional_name,flag_condition
     }
 }
 
-const verifyProfessional = async (professional_id,professional_name) => {
+const verifyProfessional = async (professional_id, professional_name) => {
     try {
         await axios.put(
             `http://127.0.0.1:5000/admin/professional/${professional_id}/verify`,
@@ -101,7 +101,7 @@ const verifyProfessional = async (professional_id,professional_name) => {
     }
 }
 
-const deleteProfessional = async (professional_id,professional_name) => {
+const deleteProfessional = async (professional_id, professional_name) => {
     try {
         await axios.delete(`http://127.0.0.1:5000/admin/professional/${professional_id}/delete`, {
             headers: {
@@ -148,53 +148,66 @@ const addNotification = (message, duration = 3000) => {
                     <p>Verify</p>
                 </div>
             </div>
-            <table v-if="filteredProfessionals.length > 0">
-                <thead>
-                    <tr class="headrow">
-                        <th style="width: 1%"></th>
-                        <th>S.No</th>
-                        <th>Professional</th>
-                        <th>Service</th>
-                        <th>Email</th>
-                        <th>Experience</th>
-                        <th>Pincode</th>
-                        <th>Rating</th>
-                        <th>Status</th>
-                        <th>Verification</th>
-                        <th style="width: 5%"></th>
-                        <th style="width: 8%"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="(prof, index) in filteredProfessionals" :key="prof.professionalId">
-                        <td v-if="prof.flag == 'no'"></td>
-                        <td v-else><p v-html="Flag"></p></td>
-                        <td>{{ index + 1 }}</td>
-                        <td>{{ prof.username }}</td>
-                        <td>{{ prof.serviceName }}</td>
-                        <td>{{ prof.email }}</td>
-                        <td>{{ prof.experience }} Years</td>
-                        <td>{{ prof.pincode }}</td>
-                        <td>{{ prof.rating }}</td>
-                        <td v-if="prof.verify == 'no'">Not Verified</td>
-                        <td v-else-if="prof.flag == 'yes'">Flagged</td>
-                        <td v-else>OK</td>
-                        <td v-if="prof.verify == 'no'">
-                            <button @click="verifyProfessional(prof.professionalId, prof.username)">Verify</button>
-                        </td>
-                        <td v-else style="color: rgb(82, 149, 231); font-weight: 600">Verified</td>
-                        <td v-if="prof.verify == 'yes'">
-                            <button @click="flagProfessional(prof.professionalId, prof.username, prof.flag)">
-                                {{ prof.flag == 'no' ? 'Flag' : 'Unflag' }}
-                            </button>
-                        </td>
-                        <td v-else></td>
-                        <td>
-                            <button @click="deleteProfessional(prof.professionalId, prof.username)">Delete</button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+            <div v-if="filteredProfessionals.length > 0" class="card-container">
+                <div
+                    v-for="prof in filteredProfessionals"
+                    :key="prof.professionalId"
+                    class="card"
+                >
+                    <div class="card-header">
+                        <p class="username">{{ prof.username }}</p>
+                        <div v-if="prof.verify == 'yes'" class="verification-badge">
+                            <p v-html="Verification" style="height: 15px; width: 15px;"></p>
+                            <p style="color: rgb(82, 149, 231); font-weight: 600;">Verified</p>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Service:</strong> {{ prof.serviceName }}</p>
+                        <p><strong>Email:</strong> {{ prof.email }}</p>
+                        <p><strong>Experience:</strong> {{ prof.experience }} Years</p>
+                        <p><strong>Pincode:</strong> {{ prof.pincode }}</p>
+                        <p><strong>Rating:</strong> {{ prof.rating }}</p>
+                        <p>
+                            <strong>Status:</strong>
+                            <span v-if="prof.verify == 'no'">Not Verified</span>
+                            <span v-else-if="prof.flag == 'yes'">Flagged</span>
+                            <span v-else>OK</span>
+                        </p>
+                    </div>
+                    <div class="card-footer">
+                        <div class="footer-divider">
+                            <div>
+                                <button
+                                    v-if="prof.verify == 'no'"
+                                    @click="verifyProfessional(prof.professionalId, prof.username)"
+                                >
+                                    Verify
+                                </button>
+                            </div>
+                            <div>
+                                <button
+                                    style="margin-right: 5px"
+                                    v-if="prof.verify == 'yes'"
+                                    @click="
+                                        flagProfessional(
+                                            prof.professionalId,
+                                            prof.username,
+                                            prof.flag
+                                        )
+                                    "
+                                >
+                                    {{ prof.flag == 'no' ? 'Flag' : 'Unflag' }}
+                                </button>
+                                <button
+                                    @click="deleteProfessional(prof.professionalId, prof.username)"
+                                >
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <img
                 class="emptyMessage"
                 v-else
@@ -263,46 +276,58 @@ input:focus::placeholder {
     color: transparent;
 }
 
-table {
-    width: 98%;
-    border: none;
-    border-collapse: separate;
-    border-spacing: 0;
-    border-radius: 0.5rem;
-    overflow: hidden;
-    margin: auto;
-}
-
-th,
-td {
-    padding: 4px;
-    text-align: start;
-    border-bottom: 1px solid #f5f5dc;
-}
-
-tr:last-child td {
-    border-bottom: none;
-}
-
-tr:nth-child(even) {
-    background-color: #2f2c2c;
-}
-
-.headrow {
-    color: white;
-    background-color: hsla(21, 100%, 50%, 0.85);
-}
-
-tr {
-    color: #f5f5dc;
-    background-color: #3c3c3c;
-}
-
-.option {
+.card-container {
     display: flex;
-    gap: 5px;
+    flex-wrap: wrap;
+    gap: 1rem;
     justify-content: center;
+}
+
+.card {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 0.5rem;
+    box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.6);
+    padding: 1rem;
+    width: 300px;
+    color: #f5f5dc;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: end;
+}
+
+.username {
+    font-size: 2rem;
+    font-weight: 600;
+    color: #fe772e;
+}
+
+.card-body p {
+    margin: 0.5rem 0;
+}
+
+.card-footer {
+    display: flex;
+    justify-content: space-between;
     align-items: center;
+    margin-top: 1rem;
+}
+
+.footer-divider {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.verification-badge {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-bottom: 8px
 }
 
 button {
