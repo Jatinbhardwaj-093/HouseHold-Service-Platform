@@ -30,10 +30,35 @@ const search = ref('')
 const filteredServices = computed(() => {
     return search.value
         ? OngoingServices.value.filter((service) =>
-            service.serviceName.toLowerCase().includes(search.value.toLowerCase())
-        )
+              service.serviceName.toLowerCase().includes(search.value.toLowerCase())
+          )
         : OngoingServices.value
 })
+
+// Pagination
+const currentPage = ref(1)
+const itemsPerPage = 15
+const paginatedServices = computed(() => {
+    const start = (currentPage.value - 1) * itemsPerPage
+    const end = start + itemsPerPage
+    return filteredServices.value.slice(start, end)
+})
+
+const totalPages = computed(() => {
+    return Math.ceil(filteredServices.value.length / itemsPerPage)
+})
+
+const nextPage = () => {
+    if (currentPage.value < totalPages.value) {
+        currentPage.value++
+    }
+}
+
+const prevPage = () => {
+    if (currentPage.value > 1) {
+        currentPage.value--
+    }
+}
 
 // Download CSV
 const errorMessage = ref('')
@@ -59,7 +84,6 @@ const downloadCsv = async () => {
         console.error('Error downloading CSV:', error)
     }
 }
-
 </script>
 
 <template>
@@ -82,46 +106,54 @@ const downloadCsv = async () => {
                     </button>
                 </div>
             </div>
-            <table v-if="filteredServices.length > 0">
-                <thead>
-                    <tr class="headrow">
-                        <th>S.No</th>
-                        <th>serviceName</th>
-                        <th>Professional</th>
-                        <th>Customer</th>
-                        <th>P - Pin Code</th>
-                        <th>C - Pin Code</th>
-                        <th>Status</th>
-                        <th>Request Date</th>
-                        <th>Completion Date</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="(service, index) in filteredServices" :key="service.BookingId">
-                        <td>{{ index + 1 }}</td>
-                        <td>{{ service.serviceName }}</td>
-                        <td>{{ service.professionalName }}</td>
-                        <td>{{ service.customerName }}</td>
-                        <td>{{ service.professionalPincode }}</td>
-                        <td>{{ service.customerPincode }}</td>
+            <div class="content">
+                <table v-if="paginatedServices.length > 0">
+                    <thead>
+                        <tr class="headrow">
+                            <th>S.No</th>
+                            <th>serviceName</th>
+                            <th>Professional</th>
+                            <th>Customer</th>
+                            <th>P - Pin Code</th>
+                            <th>C - Pin Code</th>
+                            <th>Status</th>
+                            <th>Request Date</th>
+                            <th>Completion Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="(service, index) in paginatedServices" :key="service.BookingId">
+                            <td>{{ (currentPage - 1) * itemsPerPage + index + 1 }}</td>
+                            <td>{{ service.serviceName }}</td>
+                            <td>{{ service.professionalName }}</td>
+                            <td>{{ service.customerName }}</td>
+                            <td>{{ service.professionalPincode }}</td>
+                            <td>{{ service.customerPincode }}</td>
 
-                        <td v-if="service.completionDate">Completed</td>
-                        <td v-else-if="service.professionalStatus == 'accepted'">Assigned</td>
-                        <td v-else-if="service.professionalStatus == 'rejected'">Rejected</td>
-                        <td v-else>Pending...</td>
+                            <td v-if="service.completionDate">Completed</td>
+                            <td v-else-if="service.professionalStatus == 'accepted'">Assigned</td>
+                            <td v-else-if="service.professionalStatus == 'rejected'">Rejected</td>
+                            <td v-else>Pending...</td>
 
-                        <td>{{ new Date(service.requestDate).toISOString().slice(0, 10) }}</td>
+                            <td>{{ new Date(service.requestDate).toISOString().slice(0, 10) }}</td>
 
-                        <td v-if="service.completionDate">
-                            {{ new Date(service.completionDate).toISOString().slice(0, 10) }}
-                        </td>
-                        <td v-else>...</td>
-                    </tr>
-                </tbody>
-            </table>
-            <img v-else class="emptyMessage" src="@/assets/images/empty-box.png" alt="" />
+                            <td v-if="service.completionDate">
+                                {{ new Date(service.completionDate).toISOString().slice(0, 10) }}
+                            </td>
+                            <td v-else>...</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div v-else class="emptyMessage">
+                    <img src="@/assets/images/empty-box.png" alt="No ongoing services found" />
+                </div>
+            </div>
+            <div class="pagination" v-if="totalPages > 1">
+                <button @click="prevPage" :disabled="currentPage === 1">Previous</button>
+                <span>Page {{ currentPage }} of {{ totalPages }}</span>
+                <button @click="nextPage" :disabled="currentPage === totalPages">Next</button>
+            </div>
         </div>
-
     </div>
 </template>
 
@@ -133,8 +165,10 @@ const downloadCsv = async () => {
     border-radius: 1rem;
     box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.6);
     background-color: #3c3c3c;
-    overflow: auto;
+    overflow: hidden;
     scrollbar-width: thin;
+    display: flex;
+    flex-direction: column;
 }
 
 .header {
@@ -167,6 +201,11 @@ input {
 
 input:focus::placeholder {
     color: transparent;
+}
+
+.content {
+    flex: 1;
+    overflow: auto;
 }
 
 table {
@@ -226,7 +265,6 @@ tr {
     display: flex;
     justify-content: space-evenly;
     align-items: center;
-
     width: 12rem;
     font-size: 1.25rem;
     background-color: hsla(201, 87%, 35%, 0.85);
@@ -243,5 +281,26 @@ tr {
     display: block;
     margin: auto;
     margin-top: 2rem;
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+.pagination button {
+    background-color: #1e1e1e;
+    color: #fe772e;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 0.2rem;
+    cursor: pointer;
+}
+
+.pagination span {
+    color: #f5f5dc;
 }
 </style>
