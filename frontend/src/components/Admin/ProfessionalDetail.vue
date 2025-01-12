@@ -3,6 +3,7 @@ import { onMounted, ref, computed } from 'vue'
 import axios from 'axios'
 import Search from '@/assets/svg/Search.svg?raw'
 import Verification from '@/assets/svg/Verification.svg?raw'
+import Flag from '@/assets/svg/Flag.svg?raw'
 import MenuDot from '@/assets/svg/MenuDot.svg?raw'
 import NoImg from '@/assets/svg/NoImg.svg?raw'
 import Cross from '@/assets/svg/Cross.svg?raw'
@@ -17,6 +18,12 @@ onMounted(() => {
                 detail.removeAttribute('open')
             }
         })
+        if (showMenu.value && !event.target.closest('.menu-button')) {
+            showMenu.value = null
+        }
+        if (showFilterDropdown.value && !event.target.closest('.filter-container')) {
+            showFilterDropdown.value = false
+        }
     })
 })
 
@@ -38,6 +45,9 @@ const fetchProfessional = async () => {
 // Search and filter state
 const searchTerm = ref('')
 const showUnverifiedOnly = ref(false)
+const filterType = ref('name')
+const filterOptions = ['name', 'experience', 'profession']
+const showFilterDropdown = ref(false)
 
 // Computed property for filtering professionals
 const filteredProfessionals = computed(() => {
@@ -48,9 +58,17 @@ const filteredProfessionals = computed(() => {
     }
 
     if (searchTerm.value) {
-        result = result.filter((p) =>
-            p.username.toLowerCase().includes(searchTerm.value.toLowerCase())
-        )
+        if (filterType.value === 'name') {
+            result = result.filter((p) =>
+                p.username.toLowerCase().includes(searchTerm.value.toLowerCase())
+            )
+        } else if (filterType.value === 'experience') {
+            result = result.filter((p) => p.experience >= parseInt(searchTerm.value))
+        } else if (filterType.value === 'profession') {
+            result = result.filter((p) =>
+                p.serviceName.toLowerCase().includes(searchTerm.value.toLowerCase())
+            )
+        }
     }
 
     return result
@@ -162,23 +180,24 @@ const addNotification = (message, duration = 3000) => {
             <div class="sidebar" v-if="showSidebar && !isClosing">
                 <p v-html="Cross" @click="closeSidebar" style="width: 30px; height: 30px;"></p>
                 <div v-if="selectedProfessional">
-                    <img
+                    <img 
                         v-if="selectedProfessional.image_name"
                         :src="
                             'http://127.0.0.1:5000/static/professionals_imgs/' +
                             selectedProfessional.image_name
                         "
                         alt="Professional Image"
-                        class="imagePreview"
+                        class="imagePreview sidebar-detail"
                     />
-                    <p><strong>Name:</strong> {{ selectedProfessional.username }}</p>
-                    <p><strong>Service:</strong> {{ selectedProfessional.serviceName }}</p>
-                    <p><strong>Email:</strong> {{ selectedProfessional.email }}</p>
-                    <p><strong>Experience:</strong> {{ selectedProfessional.experience }} Years</p>
-                    <p><strong>Pincode:</strong> {{ selectedProfessional.pincode }}</p>
-                    <p><strong>Rating:</strong> {{ selectedProfessional.rating }}</p>
-                    <p>
-                        <strong>Status:</strong>
+                    <p class="sidebar-detail" v-else v-html="NoImg"></p>
+                    <p class="sidebar-detail"><strong class="sidebar-detail-tags">Name:</strong> {{ selectedProfessional.username }}</p>
+                    <p class="sidebar-detail"><strong class="sidebar-detail-tags">Service:</strong> {{ selectedProfessional.serviceName }}</p>
+                    <p class="sidebar-detail"><strong class="sidebar-detail-tags">Email:</strong> {{ selectedProfessional.email }}</p>
+                    <p class="sidebar-detail"><strong class="sidebar-detail-tags">Experience:</strong> {{ selectedProfessional.experience }} Years</p>
+                    <p class="sidebar-detail"><strong class="sidebar-detail-tags">Pincode:</strong> {{ selectedProfessional.pincode }}</p>
+                    <p class="sidebar-detail"><strong class="sidebar-detail-tags">Rating:</strong> {{ selectedProfessional.rating }}</p>
+                    <p class="sidebar-detail">
+                        <strong class="sidebar-detail-tags">Status:</strong>
                         <span v-if="selectedProfessional.verify == 'no'">Not Verified</span>
                         <span v-else-if="selectedProfessional.flag == 'yes'">Flagged</span>
                         <span v-else>OK</span>
@@ -188,14 +207,26 @@ const addNotification = (message, duration = 3000) => {
         </transition>
         <div class="container">
             <div class="header">
-                <div class="searchBar">
-                    <input
-                        type="text"
-                        class="search"
-                        placeholder="Search by professional name"
-                        v-model="searchTerm"
-                    />
-                    <p class="searchBtn" v-html="Search"></p>
+                <div class="search-section"> 
+                    <div class="searchBar">
+                        <input
+                            type="text"
+                            class="search"
+                            :placeholder="`Search by ${filterType}`"
+                            v-model="searchTerm"
+                        />
+                        <p class="searchBtn" v-html="Search"></p>
+                    </div>
+                    <div class="filter-container">
+                        <button class="filter-btn" @click="showFilterDropdown = !showFilterDropdown">
+                            {{ filterType.charAt(0).toUpperCase() + filterType.slice(1) }}
+                        </button>
+                        <ul v-if="showFilterDropdown" class="filter-dropdown">
+                            <li v-for="option in filterOptions" :key="option" @click="filterType = option; showFilterDropdown = false">
+                                {{ option.charAt(0).toUpperCase() + option.slice(1) }}
+                            </li>
+                        </ul>
+                    </div>
                 </div>
                 <div @click="toggleUnverifiedFilter" class="btn">
                     <p v-html="Verification" class="VerificationBtn"></p>
@@ -217,6 +248,7 @@ const addNotification = (message, duration = 3000) => {
                     <div class="card-body">
                         <div class="verified">
                             <p v-if="prof.verify == 'yes'" v-html="Verification" style="height: 20px; width: 20px;" ></p>
+                            <p v-if="prof.flag == 'yes'" v-html="Flag" style="height: 20px; width: 20px;"></p>
                             <p class="username">{{ prof.username }}</p>
                         </div>
                         <div class="menu-button">
@@ -297,6 +329,12 @@ const addNotification = (message, duration = 3000) => {
     margin: 2rem;
 }
 
+.search-section {
+    display: flex;
+    width: min(100%, 850px);
+    gap: 1rem;
+}
+
 .searchBar {
     display: flex;
     justify-content: start;
@@ -305,6 +343,7 @@ const addNotification = (message, duration = 3000) => {
     border-radius: 0.5rem;
     padding: 0.5rem;
     width: min(100%, 750px);
+
 }
 
 input {
@@ -326,6 +365,46 @@ input {
 
 input:focus::placeholder {
     color: transparent;
+}
+
+.filter-container {
+    position: relative;
+}
+
+.filter-btn {
+    background-color: rgba(255, 90, 1, 0.8);
+    box-shadow: 5px 5px 5px #2c2b2b;
+    border: none;
+    border-radius: .5rem;
+    width: 8rem;
+    color: #f5f5dc;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 1rem;
+}
+
+.filter-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: #2c2b2b;
+    border-radius: .5rem;
+    list-style: none;
+    padding: 0;
+    width: 8rem; /* Changed from width: inherit */
+    margin: .5rem 0; /* Changed from margin: .5rem auto */
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+    z-index: 100;
+}
+
+.filter-dropdown li {
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    color: #f5f5dc;
+}
+
+.filter-dropdown li:hover {
+    background: #3c3c3c;
 }
 
 .card-container {
@@ -459,7 +538,7 @@ input:focus::placeholder {
 }
 
 .sidebar {
-    width: 25%;
+    width: 30%;
     height: 85vh;
     background: #2c2b2b;
     border-radius: 1rem;
@@ -496,6 +575,16 @@ input:focus::placeholder {
     opacity: 0;
 }
 
+.sidebar-detail{
+    margin-bottom: .5rem;
+}
+
+.sidebar-detail-tags {
+    font-weight: 600;
+    margin-right: 0.5rem;
+    color: #fe772e;
+    font-size: 1.25rem;
+}
 
 
 .image-holder {
