@@ -2,7 +2,12 @@
 import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
 import Search from '@/assets/svg/Search.svg?raw'
+import MenuDot from '@/assets/svg/MenuDot.svg?raw'
+import NoImg from '@/assets/svg/NoImg.svg?raw'
+import Cross from '@/assets/svg/Cross.svg?raw'
+import Flag from '@/assets/svg/Flag.svg?raw'
 
+const detailsRef = ref([])
 const token = localStorage.getItem('adminToken')
 
 // Fetch customers
@@ -21,8 +26,45 @@ const fetchCustomers = async () => {
     }
 }
 
+// Add these new filter-related state variables
+const filterType = ref('name')
+const filterOptions = ['name', 'pincode']
+const showFilterDropdown = ref(false)
+
+// Modify the filteredCustomers computed property
+const filteredCustomers = computed(() => {
+    let result = customers.value
+
+    if (search.value) {
+        if (filterType.value === 'name') {
+            result = result.filter((customer) =>
+                customer.username.toLowerCase().includes(search.value.toLowerCase())
+            )
+        } else if (filterType.value === 'pincode') {
+            result = result.filter((customer) => 
+                customer.pincode.toString().startsWith(search.value)
+            )
+        }
+    }
+
+    return result
+})
+
 onMounted(() => {
     fetchCustomers()
+    document.addEventListener('click', (event) => {
+        detailsRef.value.forEach((detail) => {
+            if (!detail.contains(event.target)) {
+                detail.removeAttribute('open')
+            }
+        })
+        if (showMenu.value && !event.target.closest('.menu-button')) {
+            showMenu.value = null
+        }
+        if (showFilterDropdown.value && !event.target.closest('.filter-container')) {
+            showFilterDropdown.value = false
+        }
+    })
 })
 
 // Flag customer and reload data
@@ -68,13 +110,6 @@ const deleteCustomer = async (customerId, customer_name) => {
 
 // Search functionality
 const search = ref('')
-const filteredCustomers = computed(() => {
-    return search.value
-        ? customers.value.filter((customer) =>
-              customer.username.toLowerCase().includes(search.value.toLowerCase())
-          )
-        : customers.value
-})
 
 //Notification
 import NotificationModal from '../NotificationModal.vue'
@@ -84,60 +119,167 @@ const notifications = ref([])
 const addNotification = (message, duration) => {
     notifications.value.push({ message, duration })
 }
+
+const showSidebar = ref(false)
+const selectedCustomer = ref(null)
+const isClosing = ref(false)
+
+const viewCustomer = (customer) => {
+    selectedCustomer.value = customer
+    showSidebar.value = true
+}
+
+const closeSidebar = () => {
+    isClosing.value = true
+    setTimeout(() => {
+        showSidebar.value = false
+        isClosing.value = false
+    }, 500) // Match the transition duration
+}
+
+const showMenu = ref(null)
+
+const toggleMenu = (customerId) => {
+    showMenu.value = showMenu.value === customerId ? null : customerId
+}
 </script>
 
 <template>
-    <div>
+    <div class="main-container">
+        <transition name="sidebar">
+            <div class="sidebar" v-if="showSidebar && !isClosing">
+                <p v-html="Cross" @click="closeSidebar" style="width: 30px; height: 30px"></p>
+                <div v-if="selectedCustomer">
+                    <img
+                        v-if="selectedCustomer.image_name"
+                        :src="
+                            'http://127.0.0.1:5000/static/customers_imgs/' +
+                            selectedCustomer.image_name
+                        "
+                        alt="Customer Image"
+                        class="imagePreview sidebar-detail"
+                    />
+                    <p class="sidebar-detail" v-else v-html="NoImg"></p>
+                    <p class="sidebar-detail">
+                        <strong class="sidebar-detail-tags">Name:</strong>
+                        {{ selectedCustomer.username }}
+                    </p>
+                    <p class="sidebar-detail">
+                        <strong class="sidebar-detail-tags">Email:</strong>
+                        {{ selectedCustomer.email }}
+                    </p>
+                    <p class="sidebar-detail">
+                        <strong class="sidebar-detail-tags">Phone:</strong>
+                        {{ selectedCustomer.phone }}
+                    </p>
+                    <p class="sidebar-detail">
+                        <strong class="sidebar-detail-tags">Address:</strong>
+                        {{ selectedCustomer.address }}
+                    </p>
+                    <p class="sidebar-detail">
+                        <strong class="sidebar-detail-tags">Pincode:</strong>
+                        {{ selectedCustomer.pincode }}
+                    </p>
+                    <p class="sidebar-detail">
+                        <strong class="sidebar-detail-tags">Status:</strong>
+                        <span v-if="selectedCustomer.verify == 'no'">Not Verified</span>
+                        <span v-else-if="selectedCustomer.flag == 'yes'">Flagged</span>
+                        <span v-else>OK</span>
+                    </p>
+                </div>
+            </div>
+        </transition>
         <div class="container">
-            <div class="searchBar">
-                <input
-                    type="text"
-                    class="search"
-                    placeholder="Search by customer name"
-                    v-model="search"
-                />
-                <div class="searchBtn" v-html="Search"></div>
+            <div class="header">
+                <div class="search-section">
+                    <div class="searchBar">
+                        <input
+                            type="text"
+                            class="search"
+                            :placeholder="`Search by ${filterType}`"
+                            v-model="search"
+                        />
+                        <p class="searchBtn" v-html="Search"></p>
+                    </div>
+                    <div class="filter-container">
+                        <button
+                            class="filter-btn"
+                            @click="showFilterDropdown = !showFilterDropdown"
+                        >
+                            {{ filterType.charAt(0).toUpperCase() + filterType.slice(1) }}
+                        </button>
+                        <ul v-if="showFilterDropdown" class="filter-dropdown">
+                            <li
+                                v-for="option in filterOptions"
+                                :key="option"
+                                @click="
+                                    filterType = option;
+                                    showFilterDropdown = false
+                                "
+                            >
+                                {{ option.charAt(0).toUpperCase() + option.slice(1) }}
+                            </li>
+                        </ul>
+                    </div>
+                </div>
             </div>
             <div v-if="filteredCustomers.length > 0" class="card-container">
                 <div v-for="customer in filteredCustomers" :key="customer.id" class="card">
-                    <div class="card-header">
-                        <p class="username">{{ customer.username }}</p>
+                    <div class="image-holder">
+                        <img
+                            v-if="customer.image_name"
+                            :src="
+                                'http://127.0.0.1:5000/static/customers_imgs/' + customer.image_name
+                            "
+                            alt="Customer Image"
+                            class="imagePreview"
+                        />
+                        <p v-else v-html="NoImg" class="noImagePreview"></p>
                     </div>
+                    <div class="divider"></div>
                     <div class="card-body">
-                        <p><strong>Address:</strong> {{ customer.address }}</p>
-                        <p><strong>Email:</strong> {{ customer.email }}</p>
-                        <p><strong>Contact:</strong> {{ customer.contact }}</p>
-                        <p><strong>Pincode:</strong> {{ customer.pincode }}</p>
-                        <p>
-                            <strong>Status:</strong>
-                            <span v-if="customer.flag == 'yes'">Flagged</span>
-                            <span v-else>OK</span>
-                        </p>
-                    </div>
-                    <div class="card-footer">
-                        <div class="footer-divider">
-                            <div>
-                                <button @click="flagCustomer(customer)">
+                        <div class="verified">
+                            <p
+                                v-if="customer.flag == 'yes'"
+                                v-html="Flag"
+                                style="height: 20px; width: 20px"
+                            ></p>
+                            <p class="username">{{ customer.username }}</p>
+                        </div>
+                        <div class="menu-button">
+                            <button @click="toggleMenu(customer.id)" class="menu-btn">
+                                <p
+                                    v-html="MenuDot"
+                                    style="
+                                        height: 80%;
+                                        width: 80%;
+                                        margin-left: 3px;
+                                        margin-bottom: 5px;
+                                    "
+                                ></p>
+                            </button>
+                            <ul v-if="showMenu === customer.id" class="menu-list">
+                                <li @click="viewCustomer(customer)">View</li>
+                                <li @click="flagCustomer(customer)">
                                     {{ customer.flag == 'no' ? 'Flag' : 'Unflag' }}
-                                </button>
-                            </div>
-                            <div>
-                                <button @click="deleteCustomer(customer.id, customer.username)">
+                                </li>
+                                <li @click="deleteCustomer(customer.id, customer.username)">
                                     Delete
-                                </button>
-                            </div>
+                                </li>
+                            </ul>
                         </div>
                     </div>
                 </div>
             </div>
             <img
-                v-else
                 class="emptyMessage"
+                v-else
                 src="@/assets/images/empty-box.png"
                 alt="No customers found"
             />
         </div>
         <NotificationModal
+            class="notification-modal"
             v-for="(notification, index) in notifications"
             :key="index"
             :message="notification.message"
@@ -148,15 +290,31 @@ const addNotification = (message, duration) => {
 </template>
 
 <style scoped>
+.main-container {
+    display: flex;
+    width: 98%;
+    margin: auto;
+    overflow: hidden; /* Remove scrolling from main-container */
+    gap: 0.5rem;
+}
+
 .container {
     width: 95%;
-    height: 80vh;
     margin: auto;
+    height: 85vh;
     border-radius: 1rem;
     box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.6);
     background-color: #3c3c3c;
-    overflow: auto;
     scrollbar-width: thin;
+    overflow: auto;
+    padding-bottom: 4rem;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 2rem;
 }
 
 .searchBar {
@@ -166,7 +324,6 @@ const addNotification = (message, duration) => {
     box-shadow: 5px 5px 10px rgb(0, 0, 0);
     border-radius: 0.5rem;
     padding: 0.5rem;
-    margin: 2rem;
     width: min(100%, 750px);
 }
 
@@ -181,14 +338,14 @@ input {
     padding-left: 1rem;
 }
 
-input:focus::placeholder {
-    color: transparent;
+.searchBtn,
+.VerificationBtn {
+    height: 35px;
+    width: 35px;
 }
 
-.searchBtn {
-    height: 30px;
-    width: 30px;
-    cursor: pointer;
+input:focus::placeholder {
+    color: transparent;
 }
 
 .card-container {
@@ -199,36 +356,54 @@ input:focus::placeholder {
 }
 
 .card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 0.5rem;
     box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.6);
     padding: 1rem;
+    padding-bottom: 0;
     width: 300px;
     color: #f5f5dc;
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.card-header {
+.card-body {
     display: flex;
+    justify-content: space-between;
     align-items: center;
+    width: 100%;
 }
 
 .username {
-    font-size: 2rem;
+    font-size: 1.5rem;
     font-weight: 600;
     color: #fe772e;
+    margin: 0.5rem 0;
+}
+
+.divider {
+    width: 100%;
+    height: 1px;
+    background-color: #6b6a6a;
 }
 
 .card-body p {
     margin: 0.5rem 0;
 }
 
+.verified {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
 .card-footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: 1rem;
 }
 
 .footer-divider {
@@ -237,16 +412,25 @@ input:focus::placeholder {
     width: 100%;
 }
 
-button {
+.verification-badge {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-bottom: 8px;
+}
+
+.btn {
+    display: flex;
+    justify-content: space-evenly;
+    align-items: center;
+    width: 10rem;
+    font-size: 1.5rem;
+    background-color: hsla(210, 6%, 7%, 0.85);
+    color: #f5f5dc;
     border: none;
-    border-radius: 0.2rem;
-    width: 4rem;
-    color: white;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
     cursor: pointer;
-    background-color: #1e1e1e;
-    color: #fe772e;
-    padding: 3px;
-    text-align: center;
 }
 
 .emptyMessage {
@@ -255,5 +439,167 @@ button {
     display: block;
     margin: auto;
     margin-top: 2rem;
+}
+
+.menu-button {
+    position: relative;
+}
+
+.menu-btn {
+    background-color: #2c2b2b;
+    border: none;
+    border-radius: 5px;
+    height: 2rem;
+    width: 2rem;
+    vertical-align: middle;
+    text-align: center;
+    cursor: pointer;
+}
+
+.menu-list {
+    position: absolute;
+    right: 150%;
+    bottom: 50%;
+    background: #2c2b2b;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+    z-index: 100;
+}
+
+.menu-list li {
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    color: #f5f5dc;
+}
+
+.menu-list li:hover {
+    background: #3c3c3c;
+}
+
+.sidebar {
+    width: 25%;
+    height: 85vh;
+    background: #2c2b2b;
+    border-radius: 1rem;
+    box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.6);
+    padding: 1rem;
+    overflow-y: auto;
+    color: #f5f5dc;
+    transition:
+        transform 0.5s ease-in-out,
+        opacity 0.5s ease-in-out;
+}
+
+/* Animation for the sidebar opening */
+.sidebar-enter-active,
+.sidebar-leave-active {
+    transition:
+        transform 0.5s ease-in-out,
+        opacity 0.5s ease-in-out;
+}
+
+.sidebar-enter-from {
+    transform: translateX(-100%);
+    opacity: 0;
+}
+
+.sidebar-enter-to {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.sidebar-leave-from {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.sidebar-leave-to {
+    transform: translateX(-100%);
+    opacity: 0;
+}
+
+.sidebar-detail {
+    margin-bottom: 0.5rem;
+}
+
+.sidebar-detail-tags {
+    font-weight: 600;
+    margin-right: 0.5rem;
+    color: #fe772e;
+    font-size: 1.25rem;
+}
+
+.image-holder {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #3c3c3c;
+    border-radius: 2rem;
+    width: 15rem;
+    height: 10rem;
+    padding: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.imagePreview {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.noImagePreview {
+    width: 70%;
+    height: 70%;
+    margin-bottom: 3rem;
+    object-fit: contain;
+}
+
+/* Add these new styles */
+.search-section {
+    display: flex;
+    width: min(100%, 850px);
+    gap: 1rem;
+}
+
+.filter-container {
+    position: relative;
+}
+
+.filter-btn {
+    background-color: rgba(255, 90, 1, 0.8);
+    box-shadow: 5px 5px 5px #2c2b2b;
+    border: none;
+    border-radius: 0.5rem;
+    width: 8rem;
+    color: #f5f5dc;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 1rem;
+}
+
+.filter-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: #2c2b2b;
+    border-radius: 0.5rem;
+    list-style: none;
+    padding: 0;
+    width: 8rem; /* Match the filter button width */
+    margin: 0.5rem 0; /* Changed from margin: 0.5rem auto */
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+    z-index: 100;
+}
+
+.filter-dropdown li {
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    color: #f5f5dc;
+}
+
+.filter-dropdown li:hover {
+    background: #3c3c3c;
 }
 </style>

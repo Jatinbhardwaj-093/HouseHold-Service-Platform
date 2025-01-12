@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request, current_app, send_file
 from werkzeug.utils import secure_filename
-from models import Admin,Services, ServiceImg, Customer, Professional,ProfessionalImg, ServiceRequest, ServiceReview, db
+from models import Admin,Services, ServiceImg, Customer, CustomerImg, Professional,ProfessionalImg, ServiceRequest, ServiceReview, db
 from . import bcrypt, custom_jwt_required,redis_client,get_token_expiration_time
 import os
 from sqlalchemy import func
@@ -220,6 +220,7 @@ def customers():
     customers = Customer.query.all()
     response = []
     for customer in customers:
+        img = CustomerImg.query.filter_by(Customer_id=customer.id).first()
         response.append({
             'id': customer.id,
             'email': customer.email,
@@ -227,7 +228,8 @@ def customers():
             'contact': customer.contact,
             'pincode': customer.pincode,
             'address': customer.Address,
-            'flag': customer.flag
+            'flag': customer.flag,
+            'image_name': img.name if img else None
         })
     
     redis_client.setex(cache_key, timedelta(minutes=15), json.dumps(response))
