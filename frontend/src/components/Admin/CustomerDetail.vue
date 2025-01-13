@@ -6,6 +6,10 @@ import MenuDot from '@/assets/svg/MenuDot.svg?raw'
 import NoImg from '@/assets/svg/NoImg.svg?raw'
 import Cross from '@/assets/svg/Cross.svg?raw'
 import Flag from '@/assets/svg/Flag.svg?raw'
+import UnFlag from '@/assets/svg/UnFlag.svg?raw'
+import Filter from '@/assets/svg/Filter.svg?raw'
+import Eye from '@/assets/svg/Eye.svg?raw'
+import Dustbin from '@/assets/svg/Dustbin.svg?raw'
 
 const detailsRef = ref([])
 const token = localStorage.getItem('adminToken')
@@ -202,10 +206,8 @@ const toggleMenu = (customerId) => {
                         <p class="searchBtn" v-html="Search"></p>
                     </div>
                     <div class="filter-container">
-                        <button
-                            class="filter-btn"
-                            @click="showFilterDropdown = !showFilterDropdown"
-                        >
+                        <p v-html="Filter" class="filterBtn"></p>
+                        <button class="filter-btn" @click="showFilterDropdown = !showFilterDropdown">
                             {{ filterType.charAt(0).toUpperCase() + filterType.slice(1) }}
                         </button>
                         <ul v-if="showFilterDropdown" class="filter-dropdown">
@@ -259,12 +261,20 @@ const toggleMenu = (customerId) => {
                                 ></p>
                             </button>
                             <ul v-if="showMenu === customer.id" class="menu-list">
-                                <li @click="viewCustomer(customer)">View</li>
+                                <li @click="viewCustomer(customer)">
+                                    <span v-html="Eye" class="menu-list-icon"></span>
+                                    <span>View</span>
+                                </li>
                                 <li @click="flagCustomer(customer)">
-                                    {{ customer.flag == 'no' ? 'Flag' : 'Unflag' }}
+                                    <span v-if="customer.flag == 'no'" v-html="Flag" class="menu-list-icon"></span>
+                                    <span v-else v-html="UnFlag" class="menu-list-icon"></span>
+                                    <span>
+                                        {{ customer.flag == 'no' ? 'Flag' : 'Unflag' }}
+                                    </span>
                                 </li>
                                 <li @click="deleteCustomer(customer.id, customer.username)">
-                                    Delete
+                                    <span v-html="Dustbin" class="menu-list-icon"></span>
+                                    <span>Delete</span>
                                 </li>
                             </ul>
                         </div>
@@ -324,7 +334,7 @@ const toggleMenu = (customerId) => {
     box-shadow: 5px 5px 10px rgb(0, 0, 0);
     border-radius: 0.5rem;
     padding: 0.5rem;
-    width: min(100%, 750px);
+    width: 650px;
 }
 
 input {
@@ -338,10 +348,15 @@ input {
     padding-left: 1rem;
 }
 
-.searchBtn,
-.VerificationBtn {
+.searchBtn {
     height: 35px;
     width: 35px;
+    cursor: pointer;
+}
+
+.filterBtn {
+    height: 30px;
+    width: 30px;
 }
 
 input:focus::placeholder {
@@ -458,8 +473,8 @@ input:focus::placeholder {
 
 .menu-list {
     position: absolute;
-    right: 150%;
-    bottom: 50%;
+    right: 120%;
+    bottom: 0;
     background: #2c2b2b;
     list-style: none;
     padding: 0;
@@ -470,8 +485,17 @@ input:focus::placeholder {
 
 .menu-list li {
     padding: 0.5rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: start;
+    gap: 5px;
     cursor: pointer;
     color: #f5f5dc;
+}
+
+.menu-list-icon {
+    height: 20px;
+    width: 20px;
 }
 
 .menu-list li:hover {
@@ -556,27 +580,30 @@ input:focus::placeholder {
     object-fit: contain;
 }
 
-/* Add these new styles */
 .search-section {
     display: flex;
-    width: min(100%, 850px);
     gap: 1rem;
 }
 
 .filter-container {
     position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #6b6a6a;
+    padding: .5rem;
+    border-radius: .5rem;
 }
-
 .filter-btn {
-    background-color: rgba(255, 90, 1, 0.8);
-    box-shadow: 5px 5px 5px #2c2b2b;
+    background-color: inherit;
     border: none;
-    border-radius: 0.5rem;
-    width: 8rem;
+    outline: none;
     color: #f5f5dc;
     cursor: pointer;
-    font-size: 1rem;
-    padding: 1rem;
+    font-size: 1.25rem;
+    border-left: #5e5d5d 2px solid;
+    margin-left: .5rem;
+    padding-left: .5rem;
 }
 
 .filter-dropdown {
@@ -587,7 +614,7 @@ input:focus::placeholder {
     border-radius: 0.5rem;
     list-style: none;
     padding: 0;
-    width: 8rem; /* Match the filter button width */
+    width: 100%;
     margin: 0.5rem 0; /* Changed from margin: 0.5rem auto */
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
     z-index: 100;

@@ -7,6 +7,10 @@ import Flag from '@/assets/svg/Flag.svg?raw'
 import MenuDot from '@/assets/svg/MenuDot.svg?raw'
 import NoImg from '@/assets/svg/NoImg.svg?raw'
 import Cross from '@/assets/svg/Cross.svg?raw'
+import UnFlag from '@/assets/svg/UnFlag.svg?raw'
+import Filter from '@/assets/svg/Filter.svg?raw'
+import Eye from '@/assets/svg/Eye.svg?raw'
+import Dustbin from '@/assets/svg/Dustbin.svg?raw'
 
 const detailsRef = ref([])
 const token = localStorage.getItem('adminToken')
@@ -218,6 +222,7 @@ const addNotification = (message, duration = 3000) => {
                         <p class="searchBtn" v-html="Search"></p>
                     </div>
                     <div class="filter-container">
+                        <p v-html="Filter" class="filterBtn"></p>
                         <button class="filter-btn" @click="showFilterDropdown = !showFilterDropdown">
                             {{ filterType.charAt(0).toUpperCase() + filterType.slice(1) }}
                         </button>
@@ -256,12 +261,13 @@ const addNotification = (message, duration = 3000) => {
                                 <p v-html="MenuDot" style="height: 80%; width: 80%; margin-left: 3px; margin-bottom: 5px;"></p>
                             </button>
                             <ul v-if="showMenu === prof.professionalId" class="menu-list">
-                                <li @click="viewProfessional(prof)">View</li>
-                                <li
-                                    @click="verifyProfessional(prof.professionalId, prof.username)"
-                                    v-if="prof.verify == 'no'"
-                                >
-                                    Verify
+                                <li @click="viewProfessional(prof)">
+                                    <span v-html="Eye" class="menu-list-icon"></span>
+                                    <span>View</span>
+                                </li>
+                                <li @click="verifyProfessional(prof.professionalId, prof.username)" v-if="prof.verify == 'no'" >
+                                    <span v-html="Verified" class="menu-list-icon"></span>
+                                    <span>Verify</span>
                                 </li>
                                 <li
                                     @click="
@@ -273,10 +279,15 @@ const addNotification = (message, duration = 3000) => {
                                     "
                                     v-else
                                 >
-                                    {{ prof.flag == 'no' ? 'Flag' : 'Unflag' }}
+                                    <span v-if="prof.flag == 'no'" v-html="Flag" class="menu-list-icon"></span>
+                                    <span v-else v-html="UnFlag" class="menu-list-icon"></span>
+                                    <span>
+                                        {{ prof.flag == 'no' ? 'Flag' : 'Unflag' }}
+                                    </span>
                                 </li>
                                 <li @click="deleteProfessional(prof.professionalId, prof.username)">
-                                    Delete
+                                    <span v-html="Dustbin" class="menu-list-icon"></span>
+                                    <span>Delete</span>
                                 </li>
                             </ul>
                         </div>
@@ -331,7 +342,6 @@ const addNotification = (message, duration = 3000) => {
 
 .search-section {
     display: flex;
-    width: min(100%, 850px);
     gap: 1rem;
 }
 
@@ -342,7 +352,7 @@ const addNotification = (message, duration = 3000) => {
     box-shadow: 5px 5px 10px rgb(0, 0, 0);
     border-radius: 0.5rem;
     padding: 0.5rem;
-    width: min(100%, 750px);
+    width: 550px;
 
 }
 
@@ -361,6 +371,12 @@ input {
 .VerificationBtn {
     height: 35px;
     width: 35px;
+    cursor: pointer;
+}
+
+.filterBtn{
+    width: 30px;
+    height: 30px;
 }
 
 input:focus::placeholder {
@@ -369,18 +385,24 @@ input:focus::placeholder {
 
 .filter-container {
     position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #6b6a6a;
+    padding: .5rem;
+    border-radius: .5rem;
 }
 
 .filter-btn {
-    background-color: rgba(255, 90, 1, 0.8);
-    box-shadow: 5px 5px 5px #2c2b2b;
+    background-color: inherit;
     border: none;
-    border-radius: .5rem;
-    width: 8rem;
+    outline: none;
     color: #f5f5dc;
     cursor: pointer;
-    font-size: 1rem;
-    padding: 1rem;
+    font-size: 1.25rem;
+    border-left: #5e5d5d 2px solid;
+    margin-left: .5rem;
+    padding-left: .5rem;
 }
 
 .filter-dropdown {
@@ -391,7 +413,7 @@ input:focus::placeholder {
     border-radius: .5rem;
     list-style: none;
     padding: 0;
-    width: 8rem; /* Changed from width: inherit */
+    width: 100%;
     margin: .5rem 0; /* Changed from margin: .5rem auto */
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
     z-index: 100;
@@ -517,8 +539,8 @@ input:focus::placeholder {
 
 .menu-list {
     position: absolute;
-    right: 150%;
-    bottom: 50%;
+    right: 120%;
+    bottom: 0;
     background: #2c2b2b;
     list-style: none;
     padding: 0;
@@ -529,8 +551,17 @@ input:focus::placeholder {
 
 .menu-list li {
     padding: 0.5rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: start;
+    gap: 5px;
     cursor: pointer;
     color: #f5f5dc;
+}
+
+.menu-list-icon {
+    height: 20px;
+    width: 20px;
 }
 
 .menu-list li:hover {
