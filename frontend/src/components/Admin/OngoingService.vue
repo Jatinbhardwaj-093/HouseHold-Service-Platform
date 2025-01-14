@@ -53,28 +53,59 @@ const searchPlaceholder = computed(() => {
 const filteredServices = computed(() => {
     let filtered = OngoingServices.value
 
+    // Basic filters (service name, pincodes)
     if (search.value) {
-        if (filterBy.value === 'serviceName') {
-            filtered = filtered.filter((service) =>
-                service.serviceName.toLowerCase().includes(search.value.toLowerCase())
-            )
-        } else if (filterBy.value === 'customerPincode') {
-            filtered = filtered.filter((service) =>
-                service.customerPincode.toLowerCase().includes(search.value.toLowerCase())
-            )
-        } else if (filterBy.value === 'professionalPincode') {
-            filtered = filtered.filter((service) =>
-                service.professionalPincode.toLowerCase().includes(search.value.toLowerCase())
-            )
+        const searchTerm = search.value.toLowerCase()
+        
+        switch (filterBy.value) {
+            case 'serviceName':
+                filtered = filtered.filter(service => 
+                    service.serviceName.toLowerCase().includes(searchTerm)
+                )
+                break
+            case 'customerPincode':
+                filtered = filtered.filter(service => 
+                    service.customerPincode.toString().includes(searchTerm)
+                )
+                break
+            case 'professionalPincode':
+                filtered = filtered.filter(service => 
+                    service.professionalPincode.toString().includes(searchTerm)
+                )
+                break
         }
     }
 
-    if (filterBy.value === 'date' && dateRange.value.start && dateRange.value.end) {
+    // Enhanced date filtering
+    if (dateRange.value.start || dateRange.value.end) {
         filtered = filtered.filter((service) => {
-            const serviceDate = new Date(service.requestDate).getTime()
-            const start = new Date(dateRange.value.start).getTime()
-            const end = new Date(dateRange.value.end).getTime()
-            return serviceDate >= start && serviceDate <= end
+            const requestDate = new Date(service.requestDate).getTime()
+            const completionDate = service.completionDate ? new Date(service.completionDate).getTime() : null
+            const start = dateRange.value.start ? new Date(dateRange.value.start).getTime() : null
+            const end = dateRange.value.end ? new Date(dateRange.value.end).getTime() : null
+
+            // If only start date is provided
+            if (start && !end) {
+                return requestDate >= start
+            }
+            
+            // If only end date is provided
+            if (!start && end) {
+                return completionDate ? completionDate <= end : requestDate <= end
+            }
+            
+            // If both dates are provided
+            if (start && end) {
+                if (completionDate) {
+                    // Check both request and completion dates are within range
+                    return requestDate >= start && completionDate <= end
+                } else {
+                    // If no completion date, just check request date
+                    return requestDate >= start && requestDate <= end
+                }
+            }
+
+            return true
         })
     }
 
@@ -186,6 +217,16 @@ const clearFilters = () => {
         end: ''
     }
 }
+
+const selectFilter = (value) => {
+    filterBy.value = value
+    showFilter.value = false  // Close dropdown after selection
+}
+
+const handleClickOutside = () => {
+    showFilter.value = false
+    showDateFilter.value = false
+}
 </script>
 
 <template>
@@ -194,24 +235,48 @@ const clearFilters = () => {
             <div class="header">
                 <div class="searchContainer">
                     <div class="searchBar">
-                        <input type="text" class="searchInput" :placeholder="searchPlaceholder" v-model="search" />
+                        <input
+                            type="text"
+                            class="searchInput"
+                            :placeholder="searchPlaceholder"
+                            v-model="search"
+                        />
                         <p class="searchBtn" v-html="Search"></p>
                     </div>
                     <div class="filterButtons">
                         <div class="filterContainer">
-                            <button class="filterBtn" @click.stop="toggleFilter" v-html="Filter"></button>
-                            <div class="filterDropdown" v-if="showFilter" @click.stop>
+                            <button
+                                class="filterBtn"
+                                @click.stop="toggleFilter"
+                                v-html="Filter"
+                            ></button>
+                            <div v-if="showFilter" 
+                                 class="filterDropdown" 
+                                 @click.stop 
+                                 v-click-outside="handleClickOutside">
                                 <div class="filterOptions">
-                                    <label>
-                                        <input type="radio" v-model="filterBy" value="serviceName">
+                                    <label @click="selectFilter('serviceName')">
+                                        <input
+                                            type="radio"
+                                            v-model="filterBy"
+                                            value="serviceName"
+                                        />
                                         Service Name
                                     </label>
-                                    <label>
-                                        <input type="radio" v-model="filterBy" value="customerPincode">
+                                    <label @click="selectFilter('customerPincode')">
+                                        <input
+                                            type="radio"
+                                            v-model="filterBy"
+                                            value="customerPincode"
+                                        />
                                         Customer Pincode
                                     </label>
-                                    <label>
-                                        <input type="radio" v-model="filterBy" value="professionalPincode">
+                                    <label @click="selectFilter('professionalPincode')">
+                                        <input
+                                            type="radio"
+                                            v-model="filterBy"
+                                            value="professionalPincode"
+                                        />
                                         Professional Pincode
                                     </label>
                                 </div>
@@ -219,19 +284,30 @@ const clearFilters = () => {
                             </div>
                         </div>
                         <div class="dateFilterContainer">
-                            <button class="filterBtn dateFilterBtn" @click.stop="toggleDateFilter" v-html="Calendar"></button>
-                            <div class="dateFilterDropdown" v-if="showDateFilter" @click.stop>
+                            <button
+                                class="filterBtn dateFilterBtn"
+                                @click.stop="toggleDateFilter"
+                                v-html="Calendar"
+                            ></button>
+                            <div 
+                                class="dateFilterDropdown" 
+                                v-if="showDateFilter" 
+                                @click.stop
+                                v-click-outside="handleClickOutside"
+                            >
                                 <div class="dateInputs">
                                     <div class="dateField">
-                                        <label>Start Date:</label>
-                                        <input type="date" v-model="dateRange.start">
+                                        <label class="dateFilterLabel">Request Date:</label>
+                                        <input type="date" v-model="dateRange.start" />
                                     </div>
                                     <div class="dateField">
-                                        <label>End Date:</label>
-                                        <input type="date" v-model="dateRange.end">
+                                        <label class="dateFilterLabel">Completion Date:</label>
+                                        <input type="date" v-model="dateRange.end" />
                                     </div>
                                 </div>
-                                <button class="clearBtn" @click="clearDateFilter">Clear Dates</button>
+                                <button class="clearBtn" @click="clearDateFilter">
+                                    Clear Dates
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -248,7 +324,7 @@ const clearFilters = () => {
                     <thead>
                         <tr class="headrow">
                             <th>S.No</th>
-                            <th>serviceName</th>
+                            <th>Service Name</th>
                             <th>Professional</th>
                             <th>Customer</th>
                             <th>P - Pin Code</th>
@@ -378,7 +454,6 @@ const clearFilters = () => {
     justify-content: start;
     gap: 0.5rem;
     align-items: center;
-
 }
 
 .dateInputs {
@@ -538,6 +613,15 @@ tr {
 
 .dateFilterContainer {
     position: relative;
+}
+
+.dateField{
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+.dateFilterLabel {
+    color: #f5f5dc;
 }
 
 .dateFilterBtn {
