@@ -34,7 +34,7 @@ backend/models/__pycache__/
 backend/*.pyc
 backend/*.pyo
 backend/instance/
-backend/myenv/
+backend/venv/
 backend/.env
 
 # Ignore Flask build directories
@@ -55,3 +55,8 @@ backend/Static/
 
 # Redis related
 dump.rdb
+
+# Some resource
+MAD-2(Project Video).mp4
+Home Service Platform (Documentation).pages
+MAD 2 Resources/
