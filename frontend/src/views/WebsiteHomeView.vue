@@ -16,7 +16,6 @@ const services = ref([
         <!-- Navigation Bar -->
         <nav class="navbar">
             <div class="logo">
-                <span class="logo-icon">🏠</span>
                 <span class="logo-text">HomeServe</span>
             </div>
             <div class="nav-buttons">
@@ -53,7 +52,6 @@ const services = ref([
                     <div class="service-icon">{{ service.icon }}</div>
                     <h3>{{ service.name }}</h3>
                     <p>{{ service.description }}</p>
-                    <button class="book-now">Book Now</button>
                 </div>
             </div>
         </section>
@@ -298,23 +296,31 @@ const services = ref([
 }
 
 .services-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 30px;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 20px;
     max-width: 1200px;
     margin: 0 auto;
+    overflow-x: auto;
+    padding-bottom: 15px;
+    scrollbar-width: thin;
+    scrollbar-color: #ff5c01 #333;
+    justify-content: center;
 }
 
 .service-card {
     background-color: #222;
     border-radius: 8px;
-    padding: 30px;
+    padding: 25px;
     text-align: center;
     border: 1px solid rgba(255, 92, 1, 0.2);
     box-shadow: 0 5px 15px rgba(255, 92, 1, 0.08);
     transition: all 0.3s ease;
     display: flex;
     flex-direction: column;
+    flex: 0 0 220px;
+    min-width: 220px;
+    margin: 10px;
 }
 
 .service-card:hover {
@@ -340,23 +346,8 @@ const services = ref([
 
 .service-card p {
     color: #ccc;
-    margin-bottom: 20px;
+    margin-bottom: 10px;
     flex-grow: 1;
-}
-
-.book-now {
-    padding: 10px;
-    background-color: #ff5c01;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-.book-now:hover {
-    background-color: #e54e00;
 }
 
 /* How It Works Section */
@@ -574,6 +565,25 @@ const services = ref([
     }
 }
 
+/* Scrollbar styling for services-grid */
+.services-grid::-webkit-scrollbar {
+    height: 6px;
+}
+
+.services-grid::-webkit-scrollbar-track {
+    background: #333;
+    border-radius: 10px;
+}
+
+.services-grid::-webkit-scrollbar-thumb {
+    background: #ff5c01;
+    border-radius: 10px;
+}
+
+.services-grid::-webkit-scrollbar-thumb:hover {
+    background: #ff8f01;
+}
+
 @media (max-width: 768px) {
     .hero-banner {
         padding: 0 20px;
@@ -586,9 +596,7 @@ const services = ref([
     }
 
     .services-grid {
-        grid-template-columns: 1fr;
-        max-width: 400px;
-        margin: 0 auto;
+        padding: 0 15px;
     }
 
     .trust-point {
